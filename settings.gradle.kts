@@ -34,9 +34,4 @@ pluginManagement {
   }
 }
 rootProject.name = "InspectionGeneratorJVM"
-// Client ID
-// 380833792065-a25524cdone67eigf1c5r52j4hdtool6.apps.googleusercontent.com
-
-// Client Secret
-// R4ewQFf_lhaQZKMZOGDB9BH5
 
