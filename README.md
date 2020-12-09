@@ -1,1 +1,1 @@
-"# InspectionGeneratorJVM" 
+# InspectionGeneratorJVM
