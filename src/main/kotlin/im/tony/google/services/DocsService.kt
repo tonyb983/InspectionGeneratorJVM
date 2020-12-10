@@ -2,17 +2,37 @@ package im.tony.google.services
 
 import com.google.api.services.docs.v1.Docs
 import com.google.api.services.docs.v1.model.*
-import com.google.api.services.docs.v1.model.Request as DocsRequest
 import im.tony.Const
-import im.tony.types.docsmodels.DocsModelDocument
 import im.tony.utils.StringGetter
 import im.tony.utils.asStringGetter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.google.api.services.docs.v1.model.Request as DocsRequest
 
-interface GoogleDocsService {
-  val violationTemplate: Document
-  val noViolationTemplate: Document
+public interface GoogleDocsService {
+  public val violationTemplate: Document
+  public val noViolationTemplate: Document
+
+  public fun createReplaceTextRequest(
+    findText: String,
+    matchCase: Boolean,
+    replaceText: String
+  ): DocsRequest = createReplaceTextRequest(findText, matchCase, StringGetter.create(replaceText))
+
+  public fun createReplaceTextRequest(
+    findText: String,
+    matchCase: Boolean,
+    replaceText: StringGetter
+  ): DocsRequest
+
+  public fun createBatchUpdateRequest(
+    vararg requests: DocsRequest
+  ): BatchUpdateDocumentRequest
+
+  public fun executeRequests(
+    docId: String,
+    vararg requests: DocsRequest
+  ): BatchUpdateDocumentResponse
 }
 
 private val DocsServiceImpl =
@@ -23,7 +43,7 @@ private val DocsServiceImpl =
     override val violationTemplate: Document by lazy { service.documents().get(Const.ViolationDocId).execute() }
     override val noViolationTemplate: Document by lazy { service.documents().get(Const.NoViolationDocId).execute() }
 
-    fun createReplaceTextRequest(
+    override fun createReplaceTextRequest(
       findText: String,
       matchCase: Boolean,
       replaceText: String
@@ -34,7 +54,7 @@ private val DocsServiceImpl =
           .setReplaceText(replaceText)
       )
 
-    fun createReplaceTextRequest(
+    override fun createReplaceTextRequest(
       findText: String,
       matchCase: Boolean,
       replaceText: StringGetter
@@ -45,13 +65,13 @@ private val DocsServiceImpl =
           .setReplaceText(replaceText.value)
       )
 
-    fun createBatchUpdateRequest(
+    override fun createBatchUpdateRequest(
       vararg requests: DocsRequest
     ): BatchUpdateDocumentRequest =
       BatchUpdateDocumentRequest()
         .setRequests(requests.toMutableList())
 
-    fun executeRequests(
+    override fun executeRequests(
       docId: String,
       vararg requests: DocsRequest
     ): BatchUpdateDocumentResponse = service
@@ -74,4 +94,4 @@ private val DocsServiceImpl =
     }
   }
 
-val DocsService: GoogleDocsService = DocsServiceImpl
+public val DocsService: GoogleDocsService = DocsServiceImpl

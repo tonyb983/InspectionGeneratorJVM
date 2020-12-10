@@ -2,16 +2,14 @@ package im.tony.view
 
 import com.google.api.services.docs.v1.model.Document
 import im.tony.google.services.DocsService
-import im.tony.google.services.DriveService
-import javafx.beans.property.ReadOnlyListProperty
-import javafx.geometry.Orientation
 import javafx.geometry.Pos
+import javafx.scene.Parent
 import javafx.scene.layout.Priority
+import javafx.util.Duration
 import jfxtras.scene.layout.VBox
-import com.google.api.services.drive.model.File as DriveFile
 import tornadofx.*
 
-class MainView : View("Hello TornadoFX") {
+public class MainView : View("Hello TornadoFX") {
   private val vioDoc: Document by lazy { DocsService.violationTemplate }
   private val noVioDoc: Document by lazy { DocsService.noViolationTemplate }
   private val swap = booleanProperty(false)
@@ -19,13 +17,13 @@ class MainView : View("Hello TornadoFX") {
 
   init {
     swap.addListener { _, oldValue, newValue ->
-      if(oldValue == newValue) return@addListener
+      if (oldValue == newValue) return@addListener
 
-      labelText.set(if(newValue) vioDoc.title else noVioDoc.title)
+      labelText.set(if (newValue) vioDoc.title else noVioDoc.title)
     }
   }
 
-  override val root = vbox(5.0, Pos.CENTER) {
+  override val root: Parent = vbox(5.0, Pos.CENTER) {
     id = "vbox1"
     setPrefSize(645.0, 480.0)
 
@@ -40,8 +38,16 @@ class MainView : View("Hello TornadoFX") {
         id = "vbox2"
         prefHeight(130.0)
         spacer(Priority.SOMETIMES)
+        button("Load Data View") {
+          prefWidth(((findParentOfType(VBox::class)?.width?.div(3)) ?: 50.0))
+          alignment = Pos.CENTER
+          action {
+            replaceWith<DataView>(ViewTransition.Dissolve(Duration.seconds(1.0)))
+          }
+        }
+        spacer(Priority.SOMETIMES)
         button("Swap") {
-          prefWidth(((findParentOfType(VBox::class)?.width?.div(3)) ?: 50.0 ))
+          prefWidth(((findParentOfType(VBox::class)?.width?.div(3)) ?: 50.0))
           alignment = Pos.CENTER
           action {
             swap.set(!swap.value)

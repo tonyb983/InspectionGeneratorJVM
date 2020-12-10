@@ -1,5 +1,7 @@
 package im.tony.data
 
+import im.tony.utils.isOneOf
+
 /*
 Street Number
 Street Name
@@ -7,25 +9,31 @@ IsGood
 Issues
  */
 
-typealias InspectionDataValidatorType = (InspectionData) -> Boolean
-inline class InspectionDataValidator(val validator: InspectionDataValidatorType)
+private typealias StringCreator = (InspectionData) -> String
+public typealias InspectionDataValidatorType = (InspectionData) -> Boolean
 
-data class InspectionData(val streetNumber: String, val streetName: String, val isGood: Boolean, val issues: List<String> = listOf()) {
-  val streetId = streetName.split(" ").map { it.trim().first().toUpperCase() }.joinToString("")
+public data class InspectionDataValidator(public val failureMessage: StringCreator, public val validator: InspectionDataValidatorType)
+
+public data class InspectionData(val streetNumber: String, val streetName: String, val isGood: Boolean, val issues: List<String> = listOf()) {
+  val streetId: String = streetName.split(" ").map { it.trim().first().toUpperCase() }.joinToString("")
   val homeId: String = "${streetNumber.trim()}$streetId"
-  val issueCount = if(isGood) 0 else issues.size
-  val isValid: Boolean
+  val issueCount: Int = if (isGood) 0 else issues.size
+  val isValid: Boolean = validators.all { it.validator.invoke(this) }
+  var failures: MutableList<String> = mutableListOf()
+    private set
 
-  init {
-      isValid = validators.all { it.validator.invoke(this) }
+  private fun checkAgainst(idv: InspectionDataValidator): Boolean {
+    val result = idv.validator.invoke(this)
+
+    if (!result) {
+      failures.add(idv.failureMessage.invoke(this))
+    }
+
+    return result
   }
 
-  private fun validate() {
-
-  }
-
-  companion object {
-    fun parse(cells: MutableList<String>): InspectionData {
+  public companion object {
+    public fun parse(cells: MutableList<String>): InspectionData {
       require(cells.isNotEmpty()) { "Cell array should not be empty." }
       require(cells.size in 3..9) { "Cell array size should be between 3 and 9." }
 
@@ -36,11 +44,28 @@ data class InspectionData(val streetNumber: String, val streetName: String, val 
       return InspectionData(num, name, good, cells)
     }
 
-    private fun idv(validator: InspectionDataValidatorType): InspectionDataValidator = InspectionDataValidator(validator)
+    private fun idv(message: String, validator: InspectionDataValidatorType): InspectionDataValidator =
+      InspectionDataValidator({ message }, validator)
 
-    val validators: MutableList<InspectionDataValidator> = mutableListOf(
-      idv { data -> data.streetNumber.toIntOrNull()?.run { this in 1..30 && this in 8300..8500 && this in 18300..18600 } ?: false },
-      idv { d -> (d.isGood && d.issueCount <= 0) || (!d.isGood && d.issueCount in 1..5)}
+    private fun idv(validator: InspectionDataValidatorType, msgGetter: StringCreator) = InspectionDataValidator(msgGetter, validator)
+
+    public val validators: MutableList<InspectionDataValidator> = mutableListOf(
+      idv("Street number is out of range.") { data ->
+        data.streetNumber.toIntOrNull()?.run { this in 1..30 && this in 8300..8500 && this in 18300..18600 } ?: false
+      },
+      idv({ d -> (d.isGood && d.issueCount <= 0) || (!d.isGood && d.issueCount in 1..5) }) { "Issue count invalid. IsGood: ${it.isGood} | Issue Count: ${it.issueCount}" },
+      idv({ d ->
+        d.streetId.isOneOf(
+          "CJC",
+          "CJW",
+          "GC",
+          "GW",
+          "TRD",
+          "TRC",
+          "TRP",
+          "FHW"
+        )
+      }) { "Recieved invalid street abbreviation '${it.streetId}'." },
     )
   }
 }
