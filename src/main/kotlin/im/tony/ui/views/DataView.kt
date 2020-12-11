@@ -1,4 +1,4 @@
-package im.tony.view
+package im.tony.ui.views
 
 import im.tony.data.InspectionData
 import im.tony.data.OwnerData
@@ -9,7 +9,6 @@ import javafx.geometry.Pos
 import javafx.scene.Parent
 import javafx.scene.layout.Priority
 import kotlinx.collections.immutable.ImmutableCollection
-import kotlinx.collections.immutable.toImmutableList
 import tornadofx.*
 
 public class DataView : View("Data View") {

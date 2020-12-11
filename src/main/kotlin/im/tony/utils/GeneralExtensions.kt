@@ -27,4 +27,5 @@ public sealed class StringGetter {
 
 public fun String.asStringGetter(): StringGetter = StringGetter.create(this)
 
+@Suppress("NOTHING_TO_INLINE")
 public inline fun <T> T.isOneOf(vararg ts: T): Boolean = ts.contains(this)

@@ -2,6 +2,6 @@ package im.tony
 
 import tornadofx.*
 
-fun main() {
-    launch<MyApp>()
+public fun main() {
+  launch<MyApp>()
 }

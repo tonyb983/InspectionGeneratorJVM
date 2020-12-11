@@ -13,6 +13,8 @@ public interface GoogleDocsService {
   public val violationTemplate: Document
   public val noViolationTemplate: Document
 
+  public fun getDocument(id: String): Document
+
   public fun createReplaceTextRequest(
     findText: String,
     matchCase: Boolean,
@@ -92,6 +94,8 @@ private val DocsServiceImpl =
       val d = service.documents().batchUpdate(documentId, body.setRequests(requests)).execute()
 
     }
+
+    override fun getDocument(id: String): Document = service.documents().get(id).execute()
   }
 
 public val DocsService: GoogleDocsService = DocsServiceImpl

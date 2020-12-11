@@ -24,7 +24,7 @@ contains	The content of one string is present in the other.
   has       A collection contains an element matching the parameters.
  */
 
-enum class QueryOperators {
+public enum class QueryOperators {
   Contains,
   Eq,
   NotEq,
@@ -59,15 +59,15 @@ enum class QueryOperators {
  * Convenience [Enum] for setting the [Drive.Files.List.spaces][com.google.api.services.drive.Drive.Files.List.spaces]
  * with my [setSpace() extension function][im.tony.google.extensions.setSpaces].
  */
-enum class DriveSpaces {
+public enum class DriveSpaces {
   Drive,
   AppDataFolder,
   Photos,
   All;
 
-  operator fun plus(space: DriveSpaces): String {
-    if(this == space) return this.toString()
-    if(this == All || space == All) return All.toString()
+  public operator fun plus(space: DriveSpaces): String {
+    if (this == space) return this.toString()
+    if (this == All || space == All) return All.toString()
 
     return "${this},$space"
   }
@@ -84,12 +84,12 @@ enum class DriveSpaces {
  * ### A comma-separated list of spaces to query within the corpus.
  * Supported values are [DriveSpaces.Drive], [DriveSpaces.AppDataFolder], and [DriveSpaces.Photos].
  */
-fun Drive.Files.List.setSpaces(vararg spaces: DriveSpaces): Drive.Files.List = this.setSpaces(spaces.joinToString(","))
+public fun Drive.Files.List.setSpaces(vararg spaces: DriveSpaces): Drive.Files.List = this.setSpaces(spaces.joinToString(","))
 
 //</editor-fold>
 
 //<editor-fold desc="Drive Corpora Extensions">
-enum class DriveCorporas {
+public enum class DriveCorporas {
   User,
   Drive,
   Domain,
@@ -111,19 +111,22 @@ enum class DriveCorporas {
  *
  * #### When able, use *[User][DriveCorporas.User]* or *[Drive][DriveCorporas.Drive]*, instead of *[AllDrives][DriveCorporas.AllDrives]*, for efficiency.
  */
-fun Drive.Files.List.setCorpora(corpora: DriveCorporas): Drive.Files.List = this.setSpaces(corpora.toString())
+public fun Drive.Files.List.setCorpora(corpora: DriveCorporas): Drive.Files.List = this.setSpaces(corpora.toString())
 //</editor-fold>
 
-enum class GoogleMimeTypes {
+public enum class GoogleMimeTypes {
   Audio,
+
   /**
    * Google Docs File
    */
   Document,
+
   /**
    * 3rd Party Shortcut
    */
   DriveSdk,
+
   /**
    * Google Drawing File
    */
@@ -200,12 +203,12 @@ enum class GoogleMimeTypes {
    * The [include] parameter dictates whether the Q string uses = or !=.
    * For example: [GoogleMimeTypes.Audio].asQueryString(true) would become "mimeType='application/vnd.google-apps.audio'"
    */
-  fun asQueryString(include: Boolean): String = "mimeType${if(include) "=" else "!="}'$this'"
+  public fun asQueryString(include: Boolean): String = "mimeType${if (include) "=" else "!="}'$this'"
 }
 
 
 //<editor-fold desc="Order By Extensions">
-enum class OrderBy {
+public enum class OrderBy {
   CreatedTime,
   Folder,
   ModifiedByMeTime,
@@ -218,33 +221,33 @@ enum class OrderBy {
   Starred,
   ViewedByMeTime;
 
-  override fun toString(): String = when(this) {
-    CreatedTime -> "createdTime${if(descending) " desc" else ""}"
-    Folder -> "folder${if(descending) " desc" else ""}"
-    ModifiedByMeTime -> "modifiedByMeTime${if(descending) " desc" else ""}"
-    ModifiedTime -> "modifiedTime${if(descending) " desc" else ""}"
-    Name -> "name${if(descending) " desc" else ""}"
-    NameNatural -> "name_natural${if(descending) " desc" else ""}"
-    QuotaBytesUsed -> "quotaBytesUsed${if(descending) " desc" else ""}"
-    Recency -> "recency${if(descending) " desc" else ""}"
-    SharedWithMeTime -> "sharedWithMeTime${if(descending) " desc" else ""}"
-    Starred -> "starred${if(descending) " desc" else ""}"
+  public override fun toString(): String = when (this) {
+    CreatedTime -> "createdTime${if (descending) " desc" else ""}"
+    Folder -> "folder${if (descending) " desc" else ""}"
+    ModifiedByMeTime -> "modifiedByMeTime${if (descending) " desc" else ""}"
+    ModifiedTime -> "modifiedTime${if (descending) " desc" else ""}"
+    Name -> "name${if (descending) " desc" else ""}"
+    NameNatural -> "name_natural${if (descending) " desc" else ""}"
+    QuotaBytesUsed -> "quotaBytesUsed${if (descending) " desc" else ""}"
+    Recency -> "recency${if (descending) " desc" else ""}"
+    SharedWithMeTime -> "sharedWithMeTime${if (descending) " desc" else ""}"
+    Starred -> "starred${if (descending) " desc" else ""}"
     ViewedByMeTime -> "viewedByMeTime${if(descending) " desc" else ""}"
   }
 
-  fun asDesc(): OrderBy = this.apply { descending = true }
+  public fun asDesc(): OrderBy = this.apply { descending = true }
 
   private var descending: Boolean = false
 }
 
-fun Drive.Files.List.setOrderBy(vararg keys: OrderBy): Drive.Files.List = this.setOrderBy(keys.joinToString(","))
+public fun Drive.Files.List.setOrderBy(vararg keys: OrderBy): Drive.Files.List = this.setOrderBy(keys.joinToString(","))
 //</editor-fold>
 
 
 //<editor-fold desc="Drive Coroutine Extensions">
-suspend fun <T> DriveRequest<T>.executeWithCoroutines(): T = withContext(Dispatchers.IO) { execute() }
+public suspend fun <T> DriveRequest<T>.executeWithCoroutines(): T = withContext(Dispatchers.IO) { execute() }
 
-suspend fun Drive.createFile(
+public suspend fun Drive.createFile(
   folderId: String,
   mimeType: String,
   name: String
@@ -261,10 +264,10 @@ suspend fun Drive.createFile(
     .id
 }
 
-suspend fun Drive.fetchOrCreateAppFolder(folderName: String): String {
+public suspend fun Drive.fetchOrCreateAppFolder(folderName: String): String {
   val folder = getAppFolder()
 
-  return if(folder.isEmpty()) {
+  return if (folder.isEmpty()) {
     val metadata = File().apply {
       name = folderName
       mimeType = APP_FOLDER.mimeType
@@ -279,12 +282,13 @@ suspend fun Drive.fetchOrCreateAppFolder(folderName: String): String {
   }
 }
 
-suspend fun Drive.queryFiles() = files().list().setSpaces("drive").executeWithCoroutines()
+public suspend fun Drive.queryFiles() = files().list().setSpaces("drive").executeWithCoroutines()
 
-suspend fun Drive.getAppFolder(): FileList = files().list().setSpaces("drive").setQ("mimeType='${APP_FOLDER.mimeType}'").executeWithCoroutines()
+public suspend fun Drive.getAppFolder(): FileList =
+  files().list().setSpaces("drive").setQ("mimeType='${APP_FOLDER.mimeType}'").executeWithCoroutines()
 
 /**
  * https://developers.google.com/drive/api/v3/mime-types
  */
-val APP_FOLDER: ContentType = ContentType.create("application/vnd.google-apps.folder", Consts.ISO_8859_1)
+public val APP_FOLDER: ContentType = ContentType.create("application/vnd.google-apps.folder", Consts.ISO_8859_1)
 //</editor-fold>

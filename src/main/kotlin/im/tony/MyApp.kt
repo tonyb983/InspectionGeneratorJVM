@@ -1,6 +1,6 @@
 package im.tony
 
-import im.tony.view.MainView
+import im.tony.ui.views.MainView
 import tornadofx.App
 
-class MyApp: App(MainView::class, Styles::class)
+public class MyApp : App(MainView::class, Styles::class)

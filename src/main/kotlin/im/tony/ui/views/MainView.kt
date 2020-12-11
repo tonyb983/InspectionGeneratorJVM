@@ -1,4 +1,4 @@
-package im.tony.view
+package im.tony.ui.views
 
 import com.google.api.services.docs.v1.model.Document
 import im.tony.google.services.DocsService
