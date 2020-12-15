@@ -1,37 +1,113 @@
 package im.tony.google.services
 
 import com.google.api.services.drive.Drive
-import com.google.api.services.drive.model.FileList
-import im.tony.google.extensions.*
-import com.google.api.services.drive.model.File as DriveFile
+import im.tony.google.extensions.drive.*
+import im.tony.google.types.DriveFile
+import im.tony.google.types.DriveFileList
+import im.tony.google.types.DriveFileListRequest
+
+// import com.google.api.services.drive.model.File as DriveFile
 
 public interface GoogleDriveService {
-  public val fileList: FileList
+  public var defaultCorporas: DriveCorporas
+  public var defaultSpaces: DriveSpaces
+
+  public val fileList: DriveFileList
   public val allFiles: List<DriveFile>
 
-  public fun createFile(name: String, mimeType: GoogleMimeTypes? = null, parentId: String? = null): DriveFile
+  public fun fetchFiles(config: Drive.Files.List.() -> Unit): DriveFileList?
+
+  /**
+   * Fetches all files of the given *[type]*. The function will by default only fetch the
+   * id, name, and mimType fields of the files, add any other file properties you'd like to
+   * gather to the *[otherFileProps]* variable, they will be joined by commas and appended.
+   * #### Returns a *[DriveFileList]* containing any files which match the given mimeType.
+   */
+  public fun fetchFilesOfType(type: GoogleMimeTypesExtensions, vararg otherFileProps: String): DriveFileList? = fetchFiles {
+    fields = "files(id,name,mimeType${if (otherFileProps.isNotEmpty()) ",${otherFileProps.joinToString(",")}" else ""})"
+    q = type.asQueryString()
+  }
+
+  /**
+   * Creates a file with the given [name], [mimeType], and [parentId], returns the
+   * newly created [DriveFile].
+   */
+  public fun createFile(name: String, mimeType: GoogleMimeTypesExtensions? = null, parentId: String? = null): DriveFile
+
+  /**
+   * Creates a file with the given [name]. Use [setCreateOptions] to customize the creation options
+   * of the [DriveFile] created.
+   */
   public fun createFile(name: String? = null, setCreateOptions: DriveFile.() -> Unit): DriveFile
 
-  public fun copyFile(originalId: String, newName: String, modification: (DriveFile.() -> DriveFile)? = null): DriveFile
+  public fun copyFile(originalId: String, newName: String, modification: (DriveFile.() -> Unit)? = null): DriveFile
 }
 
-public data class FileSearchParamters(
+public data class FileSearchParameters(
   val query: String? = null,
-  val space: String? = null,
-  val corpora: String? = null
+  val spaces: String? = null,
+  val spacesType: DriveSpaces? = null,
+  val corpora: String? = null,
+  val corporaType: DriveCorporas? = null,
 )
+
+private fun DriveFileListRequest.applyParams(fsp: FileSearchParameters) = this.apply {
+  if (fsp.corpora != null) {
+    corpora = fsp.corpora
+  } else if (fsp.corporaType != null) {
+    setCorpora(fsp.corporaType)
+  }
+
+  if (fsp.spaces != null) {
+    spaces = fsp.spaces
+  } else if (fsp.spacesType != null) {
+    setSpaces(fsp.spacesType)
+  }
+
+  if (fsp.query != null) {
+    q = fsp.query
+  }
+}
+
+private fun DriveFileListRequest.onlyNameAndId() = this.setFields("files(id, name)")
+private fun DriveFileListRequest.nameIdAndMax(max: Int) = this.setFields("maxResults=$max,nextPageToken,files(id, name)")
 
 private val DriveServiceImpl =
   object :
     GoogleDriveService,
     GenericService<Drive>(lazy { ServiceCreator.createDrive() }) {
-    override val fileList: FileList by lazy {
-      this.service.files().list().setSpaces(DriveSpaces.Drive).setCorpora(DriveCorporas.Drive).execute()
+    override var defaultCorporas: DriveCorporas = DriveCorporas.User
+    override var defaultSpaces: DriveSpaces = DriveSpaces.Drive
+
+    override val fileList: DriveFileList by lazy {
+      service
+        .files()
+        .list()
+        .setSpaces(defaultSpaces)
+        .setCorpora(defaultCorporas)
+        .execute()
     }
 
-    override val allFiles: List<DriveFile> by lazy { fileList.files }
+    override val allFiles: List<DriveFile> by lazy {
+      service
+        .files()
+        .list()
+        .setSpaces(defaultSpaces)
+        .setCorpora(defaultCorporas)
+        .onlyNameAndId()
+        .execute()
+        .files
+    }
 
-    override fun createFile(name: String, mimeType: GoogleMimeTypes?, parentId: String?): DriveFile = createFile(name) {
+    override fun fetchFiles(config: Drive.Files.List.() -> Unit): DriveFileList? = service
+      .files()
+      .list()
+      .setSpaces(defaultSpaces)
+      .setCorpora(defaultCorporas)
+      .apply(config)
+      .execute()
+
+    override fun createFile(name: String, mimeType: GoogleMimeTypesExtensions?, parentId: String?): DriveFile = createFile(name) {
       if (mimeType != null) this.mimeType = mimeType.toString()
       if (parentId != null) this.parents = listOf(parentId)
     }
@@ -48,9 +124,9 @@ private val DriveServiceImpl =
       return file
     }
 
-    override fun copyFile(originalId: String, newName: String, modification: (DriveFile.() -> DriveFile)?): DriveFile = service
+    override fun copyFile(originalId: String, newName: String, modification: (DriveFile.() -> Unit)?): DriveFile = service
       .files()
-      .copy(originalId, modification?.invoke(DriveFile().setName(newName)) ?: DriveFile().setName(newName))
+      .copy(originalId, DriveFile().setName(newName).apply { modification?.invoke(this) })
       .execute()
   }
 

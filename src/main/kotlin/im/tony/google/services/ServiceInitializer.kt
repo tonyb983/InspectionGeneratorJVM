@@ -99,8 +99,8 @@ private val serviceInitializerImpl = object : ServiceInitializer {
      * @return[Credential] The application credential object.
      */
     fun createCredentials(httpTrans: HttpTransport, jsonFac: JsonFactory): Credential {
-      val inStream = MyApp::class.java.getResourceAsStream(Resources.credentials)
-        ?: throw FileNotFoundException("Resource not found: ${Resources.credentials}")
+      val inStream = MyApp::class.java.getResourceAsStream(Resources.Creds.credentials)
+        ?: throw FileNotFoundException("Resource not found: ${Resources.Creds.credentials}")
 
       val clientSecrets = GoogleClientSecrets.load(jsonFac, InputStreamReader(inStream))
 

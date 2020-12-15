@@ -5,18 +5,20 @@ import com.google.api.services.sheets.v4.model.Spreadsheet
 import im.tony.Const
 
 public interface GoogleSheetsService {
-  public val mainSheet: Spreadsheet
+  //public val mainSheet: Spreadsheet
   public val inspectionData: List<List<Any>>
   public val topsData: List<List<Any>>
+
+  public fun loadEntireSpreadsheet(id: String): Spreadsheet
+  public fun loadSpreadsheetMetadata(id: String): Spreadsheet
 }
 
 private val SheetsServiceImpl =
   object :
     GoogleSheetsService,
     GenericService<Sheets>(lazy { ServiceCreator.createSheets() }) {
-    private fun loadDataSheet(): Spreadsheet = service.spreadsheets().get(Const.InputDataSheetId).setIncludeGridData(true).execute()
 
-    override val mainSheet: Spreadsheet by lazy { loadDataSheet() }
+    //override val mainSheet: Spreadsheet by lazy { loadEntireSpreadsheet(Const.InputDataSheetId) }
 
     override val inspectionData: List<List<Any>> by lazy {
       service
@@ -47,6 +49,10 @@ private val SheetsServiceImpl =
           return@let values
         }
     }
+
+    override fun loadEntireSpreadsheet(id: String): Spreadsheet = service.spreadsheets().get(id).setIncludeGridData(true).execute()
+
+    override fun loadSpreadsheetMetadata(id: String): Spreadsheet = service.spreadsheets().get(id).setIncludeGridData(false).execute()
   }
 
 public val SheetsService: GoogleSheetsService = SheetsServiceImpl

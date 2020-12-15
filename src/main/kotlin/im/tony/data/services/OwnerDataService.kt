@@ -4,6 +4,7 @@ import im.tony.data.OwnerData
 import im.tony.google.services.SheetsService
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.toImmutableMap
+import tornadofx.toObservable
 
 public object OwnerDataService {
   public val owners: ImmutableMap<String, OwnerData> by lazy {
@@ -18,5 +19,9 @@ public object OwnerDataService {
       .distinctBy { it.homeId }
       .associateBy { it.homeId }
       .toImmutableMap()
+  }
+
+  public val ownersObservable by lazy {
+    owners.toObservable()
   }
 }

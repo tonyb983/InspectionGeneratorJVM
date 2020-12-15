@@ -1,3 +1,3 @@
 package im.tony.annotations
 
-annotation class DefCon()
+public annotation class DefCon

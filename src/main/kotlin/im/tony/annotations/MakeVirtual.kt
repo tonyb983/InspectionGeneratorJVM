@@ -1,3 +1,3 @@
 package im.tony.annotations
 
-annotation class MakeVirtual()
+public annotation class MakeVirtual

@@ -1,4 +1,8 @@
+@file:Suppress("unused")
+
 package im.tony.utils
+
+import io.github.serpro69.kfaker.provider.ESport
 
 public inline fun <T> T.andThen(block: T.() -> Unit) {
   block(this)
@@ -27,5 +31,14 @@ public sealed class StringGetter {
 
 public fun String.asStringGetter(): StringGetter = StringGetter.create(this)
 
-@Suppress("NOTHING_TO_INLINE")
-public inline fun <T> T.isOneOf(vararg ts: T): Boolean = ts.contains(this)
+public fun <T> T.isOneOf(vararg ts: T): Boolean = ts.contains(this)
+
+public fun <TValue, TIter : MutableCollection<TValue>> TIter.removeAnd(element: TValue): TIter {
+  this.remove(element)
+  return this
+}
+
+public fun <T> T?.or(default: T): T = this ?: default
+
+public fun ESport.quote(): String =
+  "Today ${players()} of ${this.teams()} played ${this.teams()} in ${this.games()} during the ${this.events()} in the ${this.leagues()}"
