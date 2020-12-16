@@ -29,11 +29,41 @@ repositories {
   maven(url = "https://dl.bintray.com/kotlin/kotlin-plugin/")
   maven(url = "https://kotlin.bintray.com/kotlin-dependencies")
   maven(url = "https://jetbrains.bintray.com/intellij-third-party-dependencies/")
+  maven(url = "https://dl.bintray.com/arrow-kt/arrow-kt/")
+  // For ArrowFx snapshot builds
+  // maven(url = "https://oss.jfrog.org/artifactory/oss-snapshot-local/")
+}
+
+idea {
+  module {
+    sourceDirs.plusAssign(
+      files(
+        "build/generated/source/kapt/main",
+        "build/generated/source/kapt/debug",
+        "build/generated/source/kapt/release",
+        "build/generated/source/kaptKotlin/main",
+        "build/generated/source/kaptKotlin/debug",
+        "build/generated/source/kaptKotlin/release",
+        "build/tmp/kapt/main/kotlinGenerated"
+      )
+    )
+    generatedSourceDirs.plusAssign(
+      files(
+        "build/generated/source/kapt/main",
+        "build/generated/source/kapt/debug",
+        "build/generated/source/kapt/release",
+        "build/generated/source/kaptKotlin/main",
+        "build/generated/source/kaptKotlin/debug",
+        "build/generated/source/kaptKotlin/release",
+        "build/tmp/kapt/main/kotlinGenerated"
+      )
+    )
+  }
 }
 
 application {
   kotlin {
-    this.explicitApi = org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode.Warning
+    // this.explicitApi = org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode.Warning
     this.coreLibrariesVersion = "1.4"
 
     mainClass.set("im.tony.MainKt")
@@ -134,6 +164,21 @@ dependencies {
 
   implementation(Deps.ScenicView)
 
+  implementation(Deps.Arrow.Core)
+  implementation(Deps.Arrow.CoreData)
+  implementation(Deps.Arrow.Syntax)
+  implementation(Deps.Arrow.FxCoroutines)
+  implementation(Deps.Arrow.Optics)
+  implementation(Deps.Arrow.Mtl)
+  implementation(Deps.Arrow.MtlData)
+  implementation(Deps.Arrow.OpticsMtl)
+  implementation(Deps.Arrow.Free)
+  implementation(Deps.Arrow.FreeData)
+  implementation(Deps.Arrow.Aql)
+
+  kapt(Deps.Arrow.Kapt.Meta)
+  kapt(Deps.Arrow.Kapt.Generic)
+
   // =====================
   // = Test Dependencies =
   // =====================
@@ -152,7 +197,6 @@ dependencies {
   testImplementation(Deps.Testing.Kotest.Extensions.MockServer)
   testImplementation(Deps.Testing.Kotest.Extensions.TestContainers)
   // testImplementation(Deps.Testing.Kotest.Plugins.PiTest)
-
 
 
   testImplementation(Deps.Testing.MockK.Common)

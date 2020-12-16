@@ -1,4 +1,4 @@
-@file:Suppress("unused", "SpellCheckingInspection")
+@file:Suppress("unused", "SpellCheckingInspection", "ClassName")
 
 import org.gradle.api.Incubating
 
@@ -64,6 +64,33 @@ object Deps {
   object Db {
     const val H2 = "com.h2database:h2:${Versions.Db.H2}"
     const val Sqlite = "org.xerial:sqlite-jdbc:${Versions.Db.Sqlite}"
+  }
+
+  object Arrow {
+    private const val group = "io.arrow-kt"
+
+    private const val version = Versions.Arrow.Stable
+
+    const val Core = "$group:arrow-core:$version"
+    const val CoreData = "$group:arrow-core-data:$version"
+    const val Optics = "$group:arrow-optics:$version"
+    const val FxCoroutines = "$group:arrow-fx-coroutines:$version"
+    const val FxRx2 = "$group:arrow-fx-rx2:$version"
+    const val FxReactor = "$group:arrow-fx-reactor:$version"
+    const val Syntax = "$group:arrow-syntax:$version"
+    const val Mtl = "$group:arrow-mtl:$version"
+    const val MtlData = "$group:arrow-mtl-data:$version"
+    const val OpticsMtl = "$group:arrow-optics-mtl:$version"
+    const val Recursion = "$group:arrow-recursion:$version"
+    const val RecursionData = "$group:arrow-recursion-data:$version"
+    const val Free = "$group:arrow-free:$version"
+    const val FreeData = "$group:arrow-free-data:$version"
+    const val Aql = "$group:arrow-aql:$version"
+
+    object Kapt {
+      const val Meta = "$group:arrow-meta:$version"
+      const val Generic = "$group:arrow-generic:$version"
+    }
   }
 
   @Incubating

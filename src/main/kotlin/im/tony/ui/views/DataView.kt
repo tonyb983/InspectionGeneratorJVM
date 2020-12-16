@@ -11,8 +11,8 @@ import javafx.scene.layout.Priority
 import kotlinx.collections.immutable.ImmutableCollection
 import tornadofx.*
 
-public class DataView : View("Data View") {
-  private val inspections: ImmutableCollection<InspectionData> by lazy { InspectionDataService.inspections.values }
+class DataView : View("Data View") {
+  private val inspections by lazy { InspectionDataService.inspections.values }
   private val invalidInspections by lazy {
     InspectionDataService
       .inspections
@@ -29,7 +29,7 @@ public class DataView : View("Data View") {
         .joinToString("\n")
   }
 
-  private val owners: ImmutableCollection<OwnerData> by lazy { OwnerDataService.owners.values }
+  private val owners by lazy { OwnerDataService.owners.values }
 
   private val pSize: Pair<Double, Double> = Pair(645.0, 480.0)
 

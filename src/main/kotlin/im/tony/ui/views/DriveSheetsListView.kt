@@ -1,6 +1,6 @@
 package im.tony.ui.views
 
-import im.tony.google.extensions.drive.GoogleMimeTypesExtensions
+import im.tony.google.extensions.drive.GoogleMimeTypes
 import im.tony.google.services.DriveService
 import javafx.collections.ObservableList
 import javafx.geometry.Pos
@@ -8,11 +8,11 @@ import javafx.scene.Parent
 import tornadofx.*
 import com.google.api.services.drive.model.File as DriveFile
 
-public class DriveSheetsListView : View("Hello TornadoFX") {
+class DriveSheetsListView : View("Hello TornadoFX") {
   private val sheets: ObservableList<DriveFile> by lazy {
     observableListOf(
       DriveService
-        .fetchFilesOfType(GoogleMimeTypesExtensions.Spreadsheet)
+        .fetchFilesOfType(GoogleMimeTypes.Spreadsheet)
         ?.files
         ?: mutableListOf()
     )
@@ -38,7 +38,7 @@ public class DriveSheetsListView : View("Hello TornadoFX") {
                 fitToParentWidth()
                 prefHeight(100.0 / 3)
               }
-              text("Type: ${GoogleMimeTypesExtensions.fromMime(item.mimeType).name}") {
+              text("Type: ${GoogleMimeTypes.fromMime(item.mimeType).name}") {
                 fitToParentWidth()
                 prefHeight(100.0 / 3)
               }

@@ -4,15 +4,15 @@ package im.tony.utils
 
 import io.github.serpro69.kfaker.provider.ESport
 
-public inline fun <T> T.andThen(block: T.() -> Unit) {
+inline fun <T> T.andThen(block: T.() -> Unit) {
   block(this)
 }
 
-public sealed class StringGetter {
-  public abstract val value: String
+sealed class StringGetter {
+  abstract val value: String
 
-  public class Value(override val value: String) : StringGetter()
-  public class Getter(private val getter: () -> String, callNow: Boolean) : StringGetter() {
+  class Value(override val value: String) : StringGetter()
+  class Getter(private val getter: () -> String, callNow: Boolean) : StringGetter() {
     override val value: String by lazy { getter() }
     private var nothing: Int = 0
 
@@ -23,22 +23,26 @@ public sealed class StringGetter {
     }
   }
 
-  public companion object {
-    public fun create(value: String): StringGetter = Value(value)
-    public fun create(getter: () -> String, asLazy: Boolean = true): StringGetter = Getter(getter, asLazy)
+  companion object {
+    fun create(value: String): StringGetter = Value(value)
+    fun create(getter: () -> String, asLazy: Boolean = true): StringGetter = Getter(getter, asLazy)
   }
 }
 
-public fun String.asStringGetter(): StringGetter = StringGetter.create(this)
+fun String.asStringGetter(): StringGetter = StringGetter.create(this)
 
-public fun <T> T.isOneOf(vararg ts: T): Boolean = ts.contains(this)
+fun <T> T.isOneOf(vararg ts: T): Boolean = ts.contains(this)
 
-public fun <TValue, TIter : MutableCollection<TValue>> TIter.removeAnd(element: TValue): TIter {
+fun <TValue, TIter : MutableCollection<TValue>> TIter.removeAnd(element: TValue): TIter {
   this.remove(element)
   return this
 }
 
-public fun <T> T?.or(default: T): T = this ?: default
+fun <T> T?.or(default: T): T = this ?: default
 
-public fun ESport.quote(): String =
+fun ESport.quote(): String =
   "Today ${players()} of ${this.teams()} played ${this.teams()} in ${this.games()} during the ${this.events()} in the ${this.leagues()}"
+
+private const val emptyString = ""
+val String.Companion.empty: String
+  get() = emptyString

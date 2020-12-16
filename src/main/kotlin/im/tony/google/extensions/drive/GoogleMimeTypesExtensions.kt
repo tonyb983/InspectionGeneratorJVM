@@ -1,6 +1,6 @@
 package im.tony.google.extensions.drive
 
-public enum class GoogleMimeTypesExtensions {
+enum class GoogleMimeTypes {
   Invalid,
 
   /**
@@ -102,16 +102,16 @@ public enum class GoogleMimeTypesExtensions {
   }
 
   /**
-   * ### Returns this [GoogleMimeTypesExtensions] as a string that can be used in [Drive.Files.List.q]
+   * ### Returns this [GoogleMimeTypes] as a string that can be used in [Drive.Files.List.q]
    * The [include] parameter dictates whether the Q string uses = or !=.
-   * For example: [GoogleMimeTypesExtensions.Audio].asQueryString(true) would become "mimeType='application/vnd.google-apps.audio'"
+   * For example: [GoogleMimeTypes.Audio].asQueryString(true) would become "mimeType='application/vnd.google-apps.audio'"
    */
-  public fun asQueryString(include: Boolean = true): String = "mimeType${if (include) "=" else "!="}'$this'"
+  fun asQueryString(include: Boolean = true): String = "mimeType${if (include) "=" else "!="}'$this'"
 
-  public companion object {
-    public val allMimes: Collection<String> by lazy { values().toMutableList().apply { this.remove(Invalid) }.map { it.toString() } }
+  companion object {
+    val allMimes: Collection<String> by lazy { values().toMutableList().apply { this.remove(Invalid) }.map { it.toString() } }
 
-    public fun fromMime(input: String?): GoogleMimeTypesExtensions = when (input) {
+    fun fromMime(input: String?): GoogleMimeTypes = when (input) {
       "application/vnd.google-apps.audio" -> Audio
       "application/vnd.google-apps.document" -> Document
       "application/vnd.google-apps.drive-sdk" -> DriveSdk
@@ -132,7 +132,7 @@ public enum class GoogleMimeTypesExtensions {
       else -> Invalid
     }
 
-    public fun fromName(input: String?): GoogleMimeTypesExtensions = when (input?.toLowerCase()) {
+    fun fromName(input: String?): GoogleMimeTypes = when (input?.toLowerCase()) {
       "audio" -> Audio
       "document" -> Document
       "driveSdk" -> DriveSdk
@@ -153,7 +153,7 @@ public enum class GoogleMimeTypesExtensions {
       else -> Invalid
     }
 
-    public fun fromQueryString(input: String?): GoogleMimeTypesExtensions = fromMime(
+    fun fromQueryString(input: String?): GoogleMimeTypes = fromMime(
       input
         ?.removePrefix("mimeType!=")
         ?.removePrefix("mimeType=")

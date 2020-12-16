@@ -1,7 +1,7 @@
 package im.tony.ui.views
 
 import im.tony.Const
-import im.tony.google.extensions.drive.GoogleMimeTypesExtensions
+import im.tony.google.extensions.drive.GoogleMimeTypes
 import im.tony.google.services.DriveService
 import im.tony.google.services.SheetsService
 import im.tony.google.types.DriveFile
@@ -20,7 +20,7 @@ import tornadofx.*
 import java.util.logging.Level
 import kotlin.random.Random
 
-public class MainView : View("My View") {
+class MainView : View("My View") {
   private val mainText: String
   private val faker: Faker = Faker()
 
@@ -64,10 +64,10 @@ public class MainView : View("My View") {
   }
 
   private val docs by lazy {
-    DriveService.fetchFilesOfType(GoogleMimeTypesExtensions.Document, "iconLink")?.files?.toObservable() ?: observableListOf()
+    DriveService.fetchFilesOfType(GoogleMimeTypes.Document, "iconLink")?.files?.toObservable() ?: observableListOf()
   }
   private val folders by lazy {
-    DriveService.fetchFilesOfType(GoogleMimeTypesExtensions.Folder, "iconLink")?.files?.toObservable() ?: observableListOf()
+    DriveService.fetchFilesOfType(GoogleMimeTypes.Folder, "iconLink")?.files?.toObservable() ?: observableListOf()
   }
 
   private var selectedDoc: DriveFile? = null
@@ -153,8 +153,10 @@ public class MainView : View("My View") {
         hbox(alignment = Pos.TOP_CENTER) {
           fitToParentSize()
 
-          createFileList(this, docs) { selectedDoc = it }
-          createFileList(this, folders) { selectedFolder = it }
+          borderpane {
+            this.left<InspectionListView>()
+            this.right<OwnerListView>()
+          }
         }
 
         spacer(Priority.SOMETIMES)

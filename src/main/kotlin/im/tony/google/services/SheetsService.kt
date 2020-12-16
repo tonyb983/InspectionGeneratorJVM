@@ -3,14 +3,16 @@ package im.tony.google.services
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.model.Spreadsheet
 import im.tony.Const
+import im.tony.google.extensions.sheets.SheetsMajorDimension
+import im.tony.google.extensions.sheets.setMajorDimension
 
-public interface GoogleSheetsService {
+interface GoogleSheetsService {
   //public val mainSheet: Spreadsheet
-  public val inspectionData: List<List<Any>>
-  public val topsData: List<List<Any>>
+  val inspectionData: List<List<Any>>
+  val topsData: List<List<Any>>
 
-  public fun loadEntireSpreadsheet(id: String): Spreadsheet
-  public fun loadSpreadsheetMetadata(id: String): Spreadsheet
+  fun loadEntireSpreadsheet(id: String): Spreadsheet
+  fun loadSpreadsheetMetadata(id: String): Spreadsheet
 }
 
 private val SheetsServiceImpl =
@@ -25,7 +27,7 @@ private val SheetsServiceImpl =
         .Spreadsheets()
         .Values()
         .get(Const.InputDataSheetId, Const.NamedRanges.InspectionData)
-        .setMajorDimension("ROWS")
+        .setMajorDimension(SheetsMajorDimension.Rows)
         .execute()
         .let {
           val values = it.getValues()
@@ -40,7 +42,7 @@ private val SheetsServiceImpl =
         .Spreadsheets()
         .Values()
         .get(Const.InputDataSheetId, Const.NamedRanges.TopsData)
-        .setMajorDimension("ROWS")
+        .setMajorDimension(SheetsMajorDimension.Rows)
         .execute()
         .let {
           val values = it.getValues()
@@ -55,4 +57,4 @@ private val SheetsServiceImpl =
     override fun loadSpreadsheetMetadata(id: String): Spreadsheet = service.spreadsheets().get(id).setIncludeGridData(false).execute()
   }
 
-public val SheetsService: GoogleSheetsService = SheetsServiceImpl
+val SheetsService: GoogleSheetsService = SheetsServiceImpl

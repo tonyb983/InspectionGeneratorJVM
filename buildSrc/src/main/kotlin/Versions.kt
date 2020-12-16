@@ -1,3 +1,5 @@
+@file:Suppress("unused", "SpellCheckingInspection", "ClassName")
+
 object Versions {
   object TornadoFx {
     const val Core = "1.7.20"
@@ -8,6 +10,11 @@ object Versions {
   const val KotlinFaker = "1.6.0-rc.0"
   const val FontAwesomeFxCommons = "11.0"
   const val TestFx = "4.0.16-alpha"
+
+  object Arrow {
+    const val Stable: String = "0.11.0"
+    const val Snapshot: String = "0.12.0-SNAPSHOT"
+  }
 
   object Db {
     const val H2 = "1.4.200"
