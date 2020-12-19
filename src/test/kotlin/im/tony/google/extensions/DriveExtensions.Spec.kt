@@ -1,7 +1,7 @@
 package im.tony.google.extensions
 
+import im.tony.google.extensions.drive.DriveSpaces
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 
 class DriveExtensionsTests : DescribeSpec({

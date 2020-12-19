@@ -19,7 +19,7 @@ data class OwnerData(
   val altAddressLine1: String?,
   val altAddressLine2: String?
 ) {
-  val hasAltAddress = altAddressLine1 != null
+  fun hasAltAddress() = altAddressLine1 != null && altAddressLine2 != null
 
   fun mapToString(input: String): String = when (input) {
     "%FAMILY_NAME%" -> "$familyName Family"
@@ -29,6 +29,18 @@ data class OwnerData(
     "%ALT_ADDRESS_LINE2%" -> altAddressLine1 ?: String.empty
     else -> String.empty
   }
+
+  @Suppress("UNCHECKED_CAST")
+  fun getAddress(alt: Boolean = false): Pair<String, String> =
+    if (alt)
+      if (hasAltAddress())
+        Pair(altAddressLine1, altAddressLine2) as Pair<String, String>
+      else
+        Pair("", "")
+    else Pair(
+      propAddressLine1,
+      propAddressLine2
+    )
 
   companion object {
     fun parse(cells: MutableList<String>): OwnerData {
@@ -43,8 +55,8 @@ data class OwnerData(
       require(propAddressLine1 != null) { "Property Address Line 1 could not be retrieved from cells." }
       val propAddressLine2 = cells.removeFirstOrNull()
       require(propAddressLine2 != null) { "Property Address Line 2 could not be retrieved from cells." }
-      val altAddressLine1 = if (cells.size > 0) cells.removeAt(0) else null
-      val altAddressLine2 = if (cells.size > 0) cells.removeAt(0) else null
+      val altAddressLine1 = cells.removeFirstOrNull()
+      val altAddressLine2 = cells.removeFirstOrNull()
 
       return OwnerData(
         homeId,

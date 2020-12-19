@@ -31,7 +31,7 @@ object Versions {
   const val Exposed = "0.28.1"
 
   object Kotlin {
-    const val Lang: String = "1.4.20"
+    const val Lang: String = "1.4.21"
   }
 
   object Kotlinx {

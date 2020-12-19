@@ -3,11 +3,11 @@ package im.tony.ui.views
 import im.tony.data.services.OwnerDataService
 import im.tony.ui.fragments.OwnerDataModel
 import javafx.geometry.Pos
-import tornadofx.*
 import javafx.scene.layout.Priority
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.scene.text.TextAlignment
+import tornadofx.*
 
 class OwnerListView : View("Owner List") {
   private val owners by lazy { OwnerDataService.owners.values.toList().toObservable() }
@@ -28,8 +28,8 @@ class OwnerListView : View("Owner List") {
           text(it.propAddressLine1) {
             textAlignment = TextAlignment.LEFT
           }
-          text("Family ${if (it.hasAltAddress) "does" else "does not"} have an alternate address.") {
-            if (it.hasAltAddress) {
+          text("Family ${if (it.hasAltAddress()) "does" else "does not"} have an alternate address.") {
+            if (it.hasAltAddress()) {
               isUnderline = true
             } else {
               isStrikethrough = true

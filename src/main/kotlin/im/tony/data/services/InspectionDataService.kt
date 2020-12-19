@@ -2,10 +2,16 @@ package im.tony.data.services
 
 import im.tony.data.InspectionData
 import im.tony.google.services.SheetsService
+import javafx.collections.ObservableMap
 import tornadofx.toObservable
 
-object InspectionDataService {
-  val inspections: Map<String, InspectionData> by lazy {
+interface IInspectionDataService {
+  val inspections: Map<String, InspectionData>
+  val inspectionsObservable: ObservableMap<String, InspectionData>
+}
+
+private object InspectionDataImpl : IInspectionDataService {
+  override val inspections: Map<String, InspectionData> by lazy {
     SheetsService
       .inspectionData
       .map { anyArrays ->
@@ -19,7 +25,9 @@ object InspectionDataService {
       .toMap()
   }
 
-  val inspectionsObservable by lazy {
+  override val inspectionsObservable: ObservableMap<String, InspectionData> by lazy {
     inspections.toObservable()
   }
 }
+
+val InspectionDataService: IInspectionDataService = InspectionDataImpl

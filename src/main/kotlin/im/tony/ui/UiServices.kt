@@ -2,32 +2,33 @@ package im.tony.ui
 
 import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
+import kotlinx.coroutines.*
 import tornadofx.*
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.logging.*
 
-public data class GlobalLoggerSetup(
+data class GlobalLoggerSetup(
   val setupName: String,
   val overwriteLoggerSettings: Boolean,
   val level: Level? = null,
   val filter: Filter? = null,
 ) {
-  public constructor(
+  constructor(
     overwriteLoggerSettings: Boolean,
     level: Level? = null,
     filter: Filter? = null,
   ) : this("Unknown Setup", overwriteLoggerSettings, level, filter)
 
-  public companion object {
-    public val Default: GlobalLoggerSetup = GlobalLoggerSetup(
+  companion object {
+    val Default: GlobalLoggerSetup = GlobalLoggerSetup(
       overwriteLoggerSettings = false,
       setupName = "Default Setup",
       level = Level.OFF,
       filter = null,
     )
 
-    public val Main: GlobalLoggerSetup = GlobalLoggerSetup(
+    val Main: GlobalLoggerSetup = GlobalLoggerSetup(
       overwriteLoggerSettings = true,
       setupName = "Main Logger Setup",
       level = Level.ALL,
@@ -36,22 +37,22 @@ public data class GlobalLoggerSetup(
   }
 }
 
-public object UiServices {
+object UiServices {
   private val ignoredSenders: List<String> = listOf("javafx")
   private var maxSize: Int = 400
   private var shrinkFactor: Double = 0.35
 
-  public var isInit: Boolean = false
+  var isInit: Boolean = false
     private set
 
-  public var isStopped: Boolean = true
+  var isStopped: Boolean = true
     private set
 
-  public var logger: Logger by singleAssign(SingleAssignThreadSafetyMode.SYNCHRONIZED)
+  var logger: Logger by singleAssign(SingleAssignThreadSafetyMode.SYNCHRONIZED)
     private set
 
-  public var messages: ObservableList<String> = observableListOf()
-  public var records: ObservableList<LogRecord> = observableListOf()
+  var messages: ObservableList<String> = observableListOf()
+  var records: ObservableList<LogRecord> = observableListOf()
 
   private val listener = ListChangeListener<Any?> {
     if (it.next() && it.wasAdded() && it.list.size > maxSize) {
@@ -115,7 +116,7 @@ public object UiServices {
     }
   }
 
-  public fun init(logger: Logger, loggerSetup: GlobalLoggerSetup = GlobalLoggerSetup.Main) {
+  fun init(logger: Logger, loggerSetup: GlobalLoggerSetup = GlobalLoggerSetup.Main) {
     if (isInit) {
       return
     }
@@ -125,12 +126,13 @@ public object UiServices {
 
     val initLogs: MutableList<LogRecord> = mutableListOf()
 
-    initLogs.add(LogRecord(
-      Level.CONFIG,
-      "UiServices.init called with logger '${logger.name}'. " +
-        "Logger ${if (logger.parent == null) "does not" else "does"} have a parent, " +
-        "and ${if (logger.useParentHandlers) "does" else "does not"} use it's handlers."
-    ).apply { loggerName = "UiServices Init" })
+    initLogs.add(
+      LogRecord(
+        Level.CONFIG,
+        "UiServices.init called with logger '${logger.name}'. " +
+          "Logger ${if (logger.parent == null) "does not" else "does"} have a parent, " +
+          "and ${if (logger.useParentHandlers) "does" else "does not"} use it's handlers."
+      ).apply { loggerName = "UiServices Init" })
 
     var l = logger
 
@@ -163,18 +165,18 @@ public object UiServices {
     initLogs.forEach { this.logger.log(it) }
   }
 
-  public fun stop() {
+  fun stop() {
     this.records.removeListener(listener)
     this.messages.removeListener(listener)
     logger.removeHandler(handler)
     isStopped = true
   }
 
-  public fun log(level: Level, message: String, sender: String? = null): Unit =
+  fun log(level: Level, message: String, sender: String? = null): Unit =
     logger.log(LogRecord(level, message).apply { if (sender != null) loggerName = sender })
 
-  public fun log(level: Level, sender: String? = null, message: () -> String): Unit =
+  fun log(level: Level, sender: String? = null, message: () -> String): Unit =
     logger.log(LogRecord(level, message.invoke()).apply { if (sender != null) loggerName = sender })
 
-  public fun log(log: LogRecord): Unit = logger.log(log)
+  fun log(log: LogRecord): Unit = logger.log(log)
 }

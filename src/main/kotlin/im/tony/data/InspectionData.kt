@@ -4,17 +4,12 @@ import im.tony.utils.empty
 import im.tony.utils.isOneOf
 import tornadofx.toObservable
 
-/*
-Street Number
-Street Name
-IsGood
-Issues
- */
-
 private typealias StringCreator = (InspectionData) -> String
 typealias InspectionDataValidatorType = (InspectionData) -> Boolean
 
 data class InspectionDataValidator(val failureMessage: StringCreator, val validator: InspectionDataValidatorType)
+
+class OwnerNotFoundException(inspectionData: InspectionData) : RuntimeException("Unable to find Owner matching Inspection Data: $inspectionData")
 
 data class InspectionData(
   val streetNumber: String,

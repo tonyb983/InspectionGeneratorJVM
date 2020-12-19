@@ -28,6 +28,8 @@ interface GoogleDriveService {
     q = type.asQueryString()
   }
 
+  fun fetchFolders(name: String, exact: Boolean = false): DriveFileList?
+
   /**
    * Creates a file with the given [name], [mimeType], and [parentId], returns the
    * newly created [DriveFile].
@@ -79,12 +81,16 @@ private val DriveServiceImpl =
     override var defaultCorporas: DriveCorporas = DriveCorporas.User
     override var defaultSpaces: DriveSpaces = DriveSpaces.Drive
 
+    private fun Drive.Files.List.setDefaults(): Drive.Files.List = this
+      .setSpaces(defaultSpaces)
+      .setCorpora(defaultCorporas)
+      .setQ("trashed = false")
+
     override val fileList: DriveFileList by lazy {
       service
         .files()
         .list()
-        .setSpaces(defaultSpaces)
-        .setCorpora(defaultCorporas)
+        .setDefaults()
         .execute()
     }
 
@@ -92,8 +98,7 @@ private val DriveServiceImpl =
       service
         .files()
         .list()
-        .setSpaces(defaultSpaces)
-        .setCorpora(defaultCorporas)
+        .setDefaults()
         .onlyNameAndId()
         .execute()
         .files
@@ -102,10 +107,15 @@ private val DriveServiceImpl =
     override fun fetchFiles(config: Drive.Files.List.() -> Unit): DriveFileList? = service
       .files()
       .list()
-      .setSpaces(defaultSpaces)
-      .setCorpora(defaultCorporas)
+      .setDefaults()
       .apply(config)
       .execute()
+
+    override fun fetchFolders(name: String, exact: Boolean): DriveFileList? = fetchFiles {
+      this.setDefaults()
+      fields = "files(id, name, mimeType)"
+      q = "trashed = false and ${GoogleMimeTypes.Folder.asQueryString()} and name ${if (exact) "=" else "contains"} '${name}'"
+    }
 
     override fun createFile(name: String, mimeType: GoogleMimeTypes?, parentId: String?): DriveFile = createFile(name) {
       if (mimeType != null) this.mimeType = mimeType.toString()

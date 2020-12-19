@@ -2,10 +2,16 @@ package im.tony.data.services
 
 import im.tony.data.OwnerData
 import im.tony.google.services.SheetsService
+import javafx.collections.ObservableMap
 import tornadofx.toObservable
 
-object OwnerDataService {
-  val owners: Map<String, OwnerData> by lazy {
+interface IOwnerDataService {
+  val owners: Map<String, OwnerData>
+  val ownersObservable: ObservableMap<String, OwnerData>
+}
+
+private object OwnerDataImpl : IOwnerDataService {
+  override val owners: Map<String, OwnerData> by lazy {
     SheetsService
       .topsData
       .map { anyArrays ->
@@ -19,7 +25,9 @@ object OwnerDataService {
       .toMap()
   }
 
-  val ownersObservable by lazy {
+  override val ownersObservable: ObservableMap<String, OwnerData> by lazy {
     owners.toObservable()
   }
 }
+
+val OwnerDataService: IOwnerDataService = OwnerDataImpl

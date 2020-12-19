@@ -9,31 +9,36 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.google.api.services.docs.v1.model.Request as DocsRequest
 
-public interface GoogleDocsService {
-  public val violationTemplate: Document
-  public val noViolationTemplate: Document
+interface GoogleDocsService {
+  val violationTemplate: Document
+  val noViolationTemplate: Document
 
-  public fun getDocument(id: String): Document
+  fun getDocument(id: String): Document
 
-  public fun createReplaceTextRequest(
+  fun createReplaceTextRequest(
     findText: String,
     matchCase: Boolean,
     replaceText: String
   ): DocsRequest = createReplaceTextRequest(findText, matchCase, StringGetter.create(replaceText))
 
-  public fun createReplaceTextRequest(
+  fun createReplaceTextRequest(
     findText: String,
     matchCase: Boolean,
     replaceText: StringGetter
   ): DocsRequest
 
-  public fun createBatchUpdateRequest(
+  fun createBatchUpdateRequest(
     vararg requests: DocsRequest
   ): BatchUpdateDocumentRequest
 
-  public fun executeRequests(
+  fun executeRequests(
     docId: String,
     vararg requests: DocsRequest
+  ): BatchUpdateDocumentResponse
+
+  fun executeRequests(
+    docId: String,
+    batch: BatchUpdateDocumentRequest
   ): BatchUpdateDocumentResponse
 }
 
@@ -81,6 +86,14 @@ private val DocsServiceImpl =
       .batchUpdate(docId, createBatchUpdateRequest(*requests))
       .execute()
 
+    override fun executeRequests(
+      docId: String,
+      batch: BatchUpdateDocumentRequest
+    ): BatchUpdateDocumentResponse = service
+      .documents()
+      .batchUpdate(docId, batch)
+      .execute()
+
     fun replaceText(documentId: String) {
       val customerName = "Alice"
       val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
@@ -98,4 +111,4 @@ private val DocsServiceImpl =
     override fun getDocument(id: String): Document = service.documents().get(id).execute()
   }
 
-public val DocsService: GoogleDocsService = DocsServiceImpl
+val DocsService: GoogleDocsService = DocsServiceImpl

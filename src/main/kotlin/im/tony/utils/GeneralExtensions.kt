@@ -43,6 +43,4 @@ fun <T> T?.or(default: T): T = this ?: default
 fun ESport.quote(): String =
   "Today ${players()} of ${this.teams()} played ${this.teams()} in ${this.games()} during the ${this.events()} in the ${this.leagues()}"
 
-private const val emptyString = ""
-val String.Companion.empty: String
-  get() = emptyString
+val String.Companion.empty: String by lazy { "" }
