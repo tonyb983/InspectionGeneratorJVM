@@ -22,5 +22,9 @@ class InspectionDataTests : DescribeSpec({
       id.homeId shouldBe "12345HD"
       id.issueCount shouldBe 0
     }
+
+    it("Should parse a String Array into a valid object.") {
+
+    }
   }
 })

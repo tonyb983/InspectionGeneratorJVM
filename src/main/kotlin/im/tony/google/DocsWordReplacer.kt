@@ -13,6 +13,7 @@ import im.tony.google.services.DocsService
 import im.tony.google.services.DriveService
 import im.tony.google.services.GoogleDocsService
 import im.tony.google.services.GoogleDriveService
+import im.tony.google.types.DriveFile
 
 class WordReplacerInitException : Exception("Unable to initialize DocsWordReplacer.")
 
@@ -28,6 +29,7 @@ class DocsWordReplacer(
     val altDoc: Document? = null,
     val altDocResponses: BatchUpdateDocumentResponse? = null,
     val thrown: MutableCollection<Throwable> = mutableSetOf(),
+    val textLog: String = ""
   ) {
     constructor(
       propertyDoc: Document? = null,
@@ -36,7 +38,8 @@ class DocsWordReplacer(
       altDoc: Document? = null,
       altDocResponses: BatchUpdateDocumentResponse? = null,
       vararg thrown: Throwable,
-    ) : this(propertyDoc, propertyDocResponses, didRunAlt, altDoc, altDocResponses, thrown.toMutableSet())
+      textLog: String = ""
+    ) : this(propertyDoc, propertyDocResponses, didRunAlt, altDoc, altDocResponses, thrown.toMutableSet(), textLog)
 
     constructor(
       propertyDoc: Document? = null,
@@ -45,14 +48,20 @@ class DocsWordReplacer(
       altDoc: Document? = null,
       altDocResponses: BatchUpdateDocumentResponse? = null,
       thrown: Throwable,
-    ) : this(propertyDoc, propertyDocResponses, didRunAlt, altDoc, altDocResponses, mutableSetOf(thrown))
+      textLog: String = ""
+    ) : this(propertyDoc, propertyDocResponses, didRunAlt, altDoc, altDocResponses, mutableSetOf(thrown), textLog)
   }
 
+  init {
+    if (instance == null) {
+      instance = this
+    }
+  }
 
-  private var folders = driveService.fetchFilesOfType(GoogleMimeTypes.Folder)?.files?.map { it.name } ?: mutableListOf()
+  private var folders = driveService.fetchFilesOfType(GoogleMimeTypes.Folder)?.files ?: mutableListOf()
 
   private fun refreshFolders() {
-    folders = driveService.fetchFilesOfType(GoogleMimeTypes.Folder)?.files?.map { it.name } ?: mutableListOf()
+    folders = driveService.fetchFilesOfType(GoogleMimeTypes.Folder)?.files ?: mutableListOf()
   }
 
   private fun splitNumbersAndLetters(input: String): Pair<Boolean, String> {
@@ -65,34 +74,6 @@ class DocsWordReplacer(
 
     return true to "$numbers $letters"
   }
-
-/*
-
-{ "%SEND_DATE%", _ => Property.SendDate },
-{ "%HOMEOWNER_NAME%", prop => prop.Homeowner ?? String.Empty },
-{ "%TO_ADDRESS_1%", prop => prop.PropertyAddress?.Line1 ?? String.Empty },
-{ "%TO_ADDRESS_2%", prop => prop.PropertyAddress?.Line2 ?? String.Empty },
-{ "%STREET_NUM%", prop => prop.StreetNumber ?? String.Empty },
-{ "%STREET_NAME%", prop => prop.StreetName ?? String.Empty },
-{ "%ISSUE_LIST%", prop => prop.Issues?.Length > 0 ? String.Join("\n", prop.Issues) : String.Empty },
-
-{ "%SEND_DATE%", _ => Property.SendDate },
-{ "%HOMEOWNER_NAME%", prop => prop.Homeowner ?? String.Empty },
-{ "%TO_ADDRESS_1%", prop => prop.PropertyAddress?.Line1 ?? String.Empty },
-{ "%TO_ADDRESS_2%", prop => prop.PropertyAddress?.Line2 ?? String.Empty },
-{ "%STREET_NUM%", prop => prop.StreetNumber ?? String.Empty },
-{ "%STREET_NAME%", prop => prop.StreetName ?? String.Empty },
-{ "%ISSUE_LIST%", prop => prop.Issues?.Length > 0 ? String.Join("\n", prop.Issues) : String.Empty },
-
-{ "%SEND_DATE%", _ => Property.SendDate },
-{ "%HOMEOWNER_NAME%", prop => prop.Homeowner ?? String.Empty },
-{ "%TO_ADDRESS_1%", prop => prop.SecondaryAddress?.Line1 ?? String.Empty },
-{ "%TO_ADDRESS_2%", prop => prop.SecondaryAddress?.Line2 ?? String.Empty },
-{ "%STREET_NUM%", prop => prop.StreetNumber ?? String.Empty },
-{ "%STREET_NAME%", prop => prop.StreetName ?? String.Empty },
-{ "%ISSUE_LIST%", prop => prop.Issues?.Length > 0 ? String.Join("\n", prop.Issues) : String.Empty },
-
-*/
 
   private fun createReplacementsFor(inspectionData: InspectionData, ownerData: OwnerData, alt: Boolean): BatchUpdateDocumentRequest {
     val (to1, to2) = ownerData.getAddress(alt)
@@ -109,73 +90,124 @@ class DocsWordReplacer(
   }
 
   fun runOn(inspectionData: InspectionData): Result {
+    val log = StringBuilder("")
+    log.appendLine("Starting Replacement for ${inspectionData.streetNumber} ${inspectionData.streetName} (ID: ${inspectionData.homeId})")
+
     val owner = runCatching {
+      log.appendLine("Getting inspection property owner.")
       ownerDataService.owners.getValue(inspectionData.homeId)
-    }.getOrElse { return Result(thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while getting owner.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(thrown = it, textLog = log.toString())
+    }
 
     val original = runCatching {
+      log.appendLine("Getting ${if (inspectionData.isGood) "NO VIOLATION" else "VIOLATION"} document template.")
       if (inspectionData.isGood) {
         docsService.noViolationTemplate
       } else {
         docsService.violationTemplate
       }
-    }.getOrElse { return Result(thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while getting template.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(thrown = it, textLog = log.toString())
+    }
 
-    var parentFolder: String? = null
+    log.appendLine("Trying to find parent folder name.")
+    var parentFolder: DriveFile? = null
     val (couldSplit, parentName) = splitNumbersAndLetters(inspectionData.homeId)
+    log.appendLine("CouldSplit: $couldSplit | ParentName: $parentName")
     if (couldSplit) {
-      parentFolder = folders.firstOrNull { it.contains(parentName) }
+      log.appendLine("Could split the numbers and letters of ID, trying to find valid parent folder.")
+      parentFolder = folders.firstOrNull { it.name.contains(parentName) }
       if (parentFolder == null) {
+        log.appendLine("No valid parent folder found, refreshing folders...")
         refreshFolders()
-        parentFolder = folders.firstOrNull { it.contains(parentName) }
+        parentFolder = folders.firstOrNull { it.name.contains(parentName) }
       }
+
+      log.appendLine("Parent folder ${if (parentFolder == null) "WAS NOT" else "WAS"} found. ParentFolder: $parentFolder")
     }
 
     val toProp = runCatching {
+      log.appendLine("Making copy for property address.")
       driveService.copyFile(original.documentId, "${inspectionData.homeId} - To Property") {
         if (parentFolder != null) {
-          this.parents = listOf(parentFolder)
+          this.parents = listOf(parentFolder.id)
         }
       }
-    }.getOrElse { return Result(thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while making drive file copy.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(thrown = it, textLog = log.toString())
+    }
 
     val toPropDoc = runCatching {
-      docsService.getDocument(toProp.driveId)
-    }.getOrElse { return Result(thrown = it) }
+      log.appendLine("Getting Docs file for property address copy.")
+      docsService.getDocument(toProp.id)
+    }.getOrElse {
+      log.appendLine("Error caught while getting Docs document.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(thrown = it, textLog = log.toString())
+    }
 
     val batch1 = runCatching {
+      log.appendLine("Creating batch update request for property address copy.")
       createReplacementsFor(inspectionData, owner, false)
-    }.getOrElse { return Result(toPropDoc, thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while creating first update batch.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(toPropDoc, thrown = it, textLog = log.toString())
+    }
 
     val resp1 = runCatching {
+      log.appendLine("Executing update batch for property address copy.")
       docsService.executeRequests(toPropDoc.documentId, batch1)
-    }.getOrElse { return Result(toPropDoc, thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while executing first update batch.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(toPropDoc, thrown = it, textLog = log.toString())
+    }
 
     if (!owner.hasAltAddress()) {
+      log.appendLine("Owners do not have alternate address, returning successfully.")
       return Result(toPropDoc, resp1)
     }
 
     val toAlt = runCatching {
+      log.appendLine("Making copy for alternate address.")
       driveService.copyFile(original.documentId, "${inspectionData.homeId} - To Alternate") {
         if (parentFolder != null) {
-          this.parents = listOf(parentFolder)
+          this.parents = listOf(parentFolder.id)
         }
       }
-    }.getOrElse { return Result(toPropDoc, resp1, thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while creating alt drive copy.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(toPropDoc, resp1, thrown = it, textLog = log.toString())
+    }
 
     val toAltDoc = this.runCatching {
-      docsService.getDocument(toAlt.driveId)
-    }.getOrElse { return Result(toPropDoc, resp1, thrown = it) }
+      log.appendLine("Getting Docs file for alternate address copy.")
+      docsService.getDocument(toAlt.id)
+    }.getOrElse {
+      log.appendLine("Error caught while getting alt Docs document.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(toPropDoc, resp1, thrown = it, textLog = log.toString())
+    }
 
     val batch2 = runCatching {
+      log.appendLine("Creating batch update request for alternate address copy.")
       createReplacementsFor(inspectionData, owner, true)
-    }.getOrElse { return Result(toPropDoc, resp1, true, toAltDoc, thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while creating alt update batch.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(toPropDoc, resp1, true, toAltDoc, thrown = it, textLog = log.toString())
+    }
 
     val resp2 = runCatching {
+      log.appendLine("Executing update batch for alternate address copy.")
       docsService.executeRequests(toAltDoc.documentId, batch2)
-    }.getOrElse { return Result(toPropDoc, resp1, true, toAltDoc, thrown = it) }
+    }.getOrElse {
+      log.appendLine("Error caught while executing alt update batch.${if (it.message != null) "\nMessage: ${it.message}" else ""}")
+      return Result(toPropDoc, resp1, true, toAltDoc, thrown = it, textLog = log.toString())
+    }
 
-    return Result(toPropDoc, resp1, true, toAltDoc, resp2)
+    log.appendLine("Run complete.")
+    return Result(toPropDoc, resp1, true, toAltDoc, resp2, textLog = log.toString())
   }
 
   companion object {

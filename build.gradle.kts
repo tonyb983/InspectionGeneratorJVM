@@ -10,7 +10,7 @@ plugins {
   id("org.openjfx.javafxplugin")
 
   // id("io.kotest")
-  id("com.bnorm.power.kotlin-power-assert")
+  //id("com.bnorm.power.kotlin-power-assert")
 
   id("org.jetbrains.dokka")
   `build-dashboard`
@@ -30,6 +30,7 @@ repositories {
   maven(url = "https://kotlin.bintray.com/kotlin-dependencies")
   maven(url = "https://jetbrains.bintray.com/intellij-third-party-dependencies/")
   maven(url = "https://dl.bintray.com/arrow-kt/arrow-kt/")
+  maven(url = "https://dl.bintray.com/konform-kt/konform")
   // For ArrowFx snapshot builds
   // maven(url = "https://oss.jfrog.org/artifactory/oss-snapshot-local/")
 }
@@ -163,6 +164,10 @@ dependencies {
   implementation(Deps.Google.Clients.OAuth.Jetty)
 
   implementation(Deps.ScenicView)
+
+  implementation(Deps.JavaStringSimilarity)
+
+  implementation(Deps.Validation.Konform)
 
   implementation(Deps.Arrow.Core)
   implementation(Deps.Arrow.CoreData)

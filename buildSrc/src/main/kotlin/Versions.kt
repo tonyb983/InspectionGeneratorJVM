@@ -5,6 +5,7 @@ object Versions {
     const val Core = "1.7.20"
   }
 
+  const val Jafama: String = "2.3.2"
   const val RoboElectric: String = ""
   const val iKonli: String = "12.0.0"
   const val KotlinFaker = "1.6.0-rc.0"
@@ -27,6 +28,8 @@ object Versions {
   }
 
   const val ScenicView = "11.0.2"
+
+  const val JavaStringSimilarity = "2.0.0"
 
   const val Exposed = "0.28.1"
 
@@ -86,6 +89,12 @@ object Versions {
 
   object Spek {
     const val Release: String = "2.0.14"
+  }
+
+  object Validation {
+    const val Konform = "0.2.0"
+    const val Valiktor = "0.12.0"
+    const val Kalidation = "1.5.0"
   }
 
   const val Strikt = "0.28.1"

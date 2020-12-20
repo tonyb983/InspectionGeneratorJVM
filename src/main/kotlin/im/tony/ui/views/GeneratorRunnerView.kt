@@ -1,193 +1,323 @@
 package im.tony.ui.views
 
-import im.tony.utils.getRandomLogLevel
-import im.tony.utils.getRandomQuote
-import javafx.beans.property.BooleanProperty
-import javafx.event.EventHandler
-import javafx.scene.control.MenuBar
+import im.tony.data.InspectionData
+import im.tony.data.services.InspectionDataService
+import im.tony.data.services.OwnerDataService
+import im.tony.google.DocsWordReplacer
+import im.tony.google.services.DocsService
+import im.tony.google.services.DriveService
+import im.tony.utils.ensurePositive
+import javafx.beans.property.ObjectProperty
+import javafx.collections.ObservableList
+import javafx.scene.paint.Color
+import javafx.scene.text.Font
+import javafx.scene.text.TextAlignment
 import javafx.util.Duration
-import org.controlsfx.control.NotificationPane
 import org.controlsfx.control.Notifications
-import org.controlsfx.control.StatusBar
+import org.controlsfx.control.action.Action
 import tornadofx.*
-import tornadofx.controlsfx.statusbar
-import java.util.logging.Level
-import kotlin.random.Random
 
 class GeneratorRunnerView : View("Generator") {
-  val notificationShowing: BooleanProperty = booleanProperty(false)
-  private var nPane: NotificationPane by singleAssign()
-  private val random by lazy { Random(0) }
-
-  /**
-   * Called when a Component becomes the Scene root or
-   * when its root node is attached to another Component.
-   * @see UIComponent.add
-   */
-  override fun onDock() {
-    super.onDock()
-
-    workspace.add(createMenuBar())
-  }
-
-  init {
-    notificationShowing.addListener { obs, oldVal, newVal -> if (oldVal != newVal) println("Notification Showing On Change. Old:$oldVal | New:$newVal | Obs:$obs") }
-  }
+  private val loadedInspections: ObservableList<Pair<InspectionData, Boolean>> = observableListOf()
 
   override val root = pane {
     fitToParentSize()
+
     vbox {
-      button("Create Notification") {
-        action {
-          val text = getRandomQuote().breakTextEvery(45, 52)
-          val dur = if (text.length > 75) Duration.seconds(random.nextDouble(6.0, 10.0)) else if (text.length < 35) Duration.seconds(
-            random.nextDouble(
-              3.0,
-              5.0
-            )
-          ) else Duration.seconds(random.nextDouble(4.0, 7.5))
-          Notifications
-            .create()
-            .darkStyle()
-            .hideAfter(dur)
-            .text(text)
-            .run {
-              when (getRandomLogLevel()) {
-                Level.SEVERE -> showError()
-                Level.WARNING -> showWarning()
-                Level.INFO -> showInformation()
-                Level.CONFIG -> showConfirm()
-                else -> show()
-              }
-            }
-        }
-      }
-    }
-  }
-
-  private fun createStatusBar(): StatusBar {
-    return statusbar {
-      fitToParentWidth()
-      prefHeight(40.0)
-      this.text = "Hello status-bar!"
-    }
-  }
-
-  private fun createMenuBar(): MenuBar {
-    return menubar {
-      this.menu("Something") {
-        this.item("Something 1") {
-          this.onAction = EventHandler { log.log(Level.WARNING, "Something 1 pressed.") }
-        }
-        this.item("Something 2") {
-          this.onAction = EventHandler { log.log(Level.WARNING, "Something 2 pressed.") }
-        }
-        this.separator()
-        this.checkmenuitem("Check Menu Item") {
-          this.onAction = EventHandler { log.warning("check menu handler: $it") }
-        }
-      }
-      this.menu("Another Thing") {
-        this.item("Another 1")
-        this.item("And another")
-      }
-    }
-  }
-
-  private fun CharSequence.prepareHyphen(): Pair<CharSequence, CharSequence> {
-    val mid = if (this.length % 2 != 0) (this.length - 1) / 2 else this.length / 2
-    val first = this.subSequence(0, mid)
-    val second = this.subSequence(mid, this.length)
-
-    return first to second
-  }
-
-  private fun String.breakTextEvery(
-    shortestLine: Int,
-    longestLine: Int,
-    breakOn: String = " ",
-    ignoreCase: Boolean = false,
-    breakWith: String = System.lineSeparator()
-  ): String {
-    val words = this.split(breakOn, ignoreCase = ignoreCase)
-    val wordCount = words.size
-    val sb = StringBuilder()
-    var currentLineLength = 0
-
-    fun appendSpaceIfMore(isLast: Boolean) {
-      if (isLast) return
-
-      sb.append(" ")
-      currentLineLength += 1
-    }
-
-    for ((index, word) in words.withIndex()) {
-      val isLastWord = index + 1 >= wordCount
-      when (val afterCurrentSize = currentLineLength + word.length) {
-        in 0 until shortestLine -> { // Too short.
-          sb.append(word)
-          currentLineLength += word.length
-          appendSpaceIfMore(isLastWord)
-        }
-        in shortestLine..longestLine -> { // In Range
-          when {
-            isLastWord -> {
-              // If this is the last word we will append and be done
-              sb.append(word)
-              // Unnecessary but safe
-              currentLineLength += word.length
-            }
-            words[index + 1].length + afterCurrentSize + 1 < longestLine -> {
-              // If the next word will fit we won't break
-              sb.append("$word ")
-              currentLineLength += (word.length + 1)
-            }
-            else -> {
-              // If the next word won't fit we will break here
-              sb.append("$word$breakWith")
-              currentLineLength = 0
-            }
+      fitToParentSize()
+      spacing = 20.0
+      hbox {
+        prefHeight(40.0)
+        fitToParentWidth()
+        button("Load Inspection") {
+          action {
+            loadRandomInspection()
           }
         }
-        else -> { // We're too big to fit
-          if ((word.length / 2) + currentLineLength <= longestLine) {
-            val (first, second) = word.prepareHyphen()
-            sb.append("$first-$breakWith")
-            sb.append(second)
-            currentLineLength = second.length
-            appendSpaceIfMore(isLastWord)
-          } else {
-            sb.append(breakWith)
-            currentLineLength = 0
-            if (word.length > longestLine) {
-              if ((word.length / 2) > longestLine) {
-                // Way too big, multi-hyphen?
-                val parts = word.length / shortestLine
-                for (i in 0 until parts) {
-                  val part = word.subSequence(i * shortestLine, (i + 1) * shortestLine)
-                  sb.append("$part-$breakWith")
+
+        button("Run Inspection") {
+          action {
+            runRandomInspection()
+          }
+        }
+      }
+
+      spacer {
+        this.prefHeight(20.0)
+      }
+
+      listview(loadedInspections) {
+        this.isEditable = false
+        cellFormat {
+          this.graphic = cache(this.item.first.homeId) {
+            vbox {
+              if (!this@cellFormat.item.second) {
+                lazyContextmenu {
+                  item("Refresh Inspection List") {
+                    action {
+                      this@cellFormat.listView.refresh()
+                    }
+                  }
+                  item("Run Inspection") {
+                    action {
+                      runSpecificInspection(this@cellFormat.index)
+                    }
+                  }
                 }
-                val last = word.subSequence((parts - 1) * shortestLine, word.length)
-                sb.append(last)
-                currentLineLength = last.length
-                appendSpaceIfMore(isLastWord)
-              } else {
-                val (first, second) = word.prepareHyphen()
-                sb.append("$first-$breakWith")
-                sb.append(second)
-                currentLineLength = second.length
-                appendSpaceIfMore(isLastWord)
               }
-            } else {
-              sb.append(word)
-              currentLineLength = word.length
-              appendSpaceIfMore(isLastWord)
+              text(this@cellFormat.item.first.homeId) {
+                textFill = Color.DODGERBLUE
+                font = Font.font(12.0)
+                isStrikethrough = this@cellFormat.item.second
+                textAlignment = TextAlignment.RIGHT
+              }
+              text("${this@cellFormat.item.first.streetNumber} ${this@cellFormat.item.first.streetName}") {
+                textFill = Color.DIMGREY
+                font = Font.font(20.0)
+                isStrikethrough = this@cellFormat.item.second
+                textAlignment = TextAlignment.RIGHT
+              }
+              text("Issues: ${this@cellFormat.item.first.issueCount}") {
+                textFill = if (this@cellFormat.item.first.isGood) Color.DIMGREY else Color.RED
+                font = Font.font(12.0)
+                isStrikethrough = this@cellFormat.item.second
+                textAlignment = TextAlignment.RIGHT
+              }
             }
           }
         }
       }
     }
-
-    return sb.toString()
   }
+
+  private fun emptyListThreshold(): Notifications = Notifications.create()
+    .title("Inspection List Empty")
+    .text("No inspections are loaded, load at\nleast one inspection before generating.")
+    .darkStyle()
+    .action(Action {
+      if (it.isConsumed) return@Action
+      loadRandomInspection(10)
+    })
+    .hideAfter(Duration.seconds(5.0))
+
+  private fun allCompleteThreshold(): Notifications = Notifications.create()
+    .title("Inspections Complete")
+    .text("All loaded inspections are completed.\nLoad more inspections before trying again.")
+    .darkStyle()
+    .action(Action {
+      if (it.isConsumed) return@Action
+      loadRandomInspection(10)
+    })
+    .hideAfter(Duration.seconds(5.0))
+
+  private fun createBaseNotification(
+    text: String,
+    title: String? = null,
+    vararg actions: Action,
+    threshold: Notifications? = null,
+    thresholdCount: Int = 5,
+    duration: Duration = Duration.seconds(4.0)
+  ): Notifications = Notifications.create()
+    .title(title)
+    .text(text)
+    .darkStyle()
+    .action(*actions)
+    .hideAfter(duration.ensurePositive(Duration.seconds(4.0)))
+    .apply { if (threshold != null) this.threshold(if (thresholdCount < 2) 5 else thresholdCount, threshold) }
+
+  private fun showInfoNotification(
+    text: String,
+    title: String? = null,
+    vararg actions: Action,
+    threshold: Notifications? = null,
+    thresholdCount: Int = 5,
+  ): Unit = createBaseNotification(
+    text,
+    "Info${if (title != null) " - $title" else ""}",
+    *actions,
+    threshold = threshold,
+    thresholdCount = thresholdCount,
+  ).showInformation()
+
+  private fun showWarningNotification(
+    text: String,
+    title: String? = null,
+    vararg actions: Action,
+    threshold: Notifications? = null,
+    thresholdCount: Int = 5,
+  ): Unit = createBaseNotification(
+    text,
+    "Warning${if (title != null) " - $title" else ""}",
+    *actions,
+    threshold = threshold,
+    thresholdCount = thresholdCount,
+  ).showWarning()
+
+  private fun showErrorNotification(
+    text: String,
+    title: String? = null,
+    vararg actions: Action,
+    threshold: Notifications? = null,
+    thresholdCount: Int = 5,
+  ): Unit = createBaseNotification(
+    text,
+    "Error${if (title != null) " - $title" else ""}",
+    *actions,
+    threshold = threshold,
+    thresholdCount = thresholdCount,
+  ).showError()
+
+  private fun runRandomInspection() {
+    if (runningLock.get() != null) {
+      showWarningNotification("Run is currently locked.")
+      return
+    }
+
+    showInfoNotification("Starting random inspection.")
+
+    if (loadedInspections.size < 1) {
+      showWarningNotification(
+        "No inspections are loaded, load at\nleast one inspection before generating.",
+        "Inspection List Empty",
+        Action {
+          if (it.isConsumed) {
+            return@Action
+          }
+          loadRandomInspection(10)
+        },
+        threshold = emptyListThreshold()
+      )
+      log.warning("No inspections are loaded, load at least one inspection before generating.")
+      return
+    }
+    if (loadedInspections.all { it.second }) {
+      showWarningNotification(
+        "All loaded inspections are completed.\nLoad more inspections before trying again.",
+        "Inspections Complete",
+        Action {
+          if (it.isConsumed) {
+            return@Action
+          }
+          loadRandomInspection(10)
+        },
+        threshold = emptyListThreshold()
+      )
+      log.warning("All loaded inspections are completed.")
+      return
+    }
+
+    val chosen = loadedInspections.firstOrNull { !it.second }
+    if (chosen == null) {
+      showErrorNotification("FirstOrNull returned null but none of the guard clauses caught it.")
+      log.severe("FirstOrNull returned null but none of the guard clauses caught it.")
+      return
+    }
+
+    if (chosen.second) {
+      showErrorNotification("FirstOrNull returned a completed inspection despite its predicate.")
+      log.severe("FirstOrNull returned a completed inspection despite its predicate.")
+      return
+    }
+
+    val chosenIndex = loadedInspections.indexOf(chosen)
+
+    showInfoNotification("Running inspection on ${chosen.first.homeId}, which ${if (chosen.second) "IS" else "IS NOT"} complete.\nFound at index $chosenIndex.")
+
+    val result = runInspection(chosen.first)
+    if (result) {
+      loadedInspections.remove(chosen)
+      loadedInspections.add(chosen.first to true)
+    }
+  }
+
+  private fun runSpecificInspection(index: Int) {
+    if (runningLock.get() != null) {
+      showWarningNotification("Run is currently locked.")
+      return
+    }
+
+    if (index !in 0 until loadedInspections.size) {
+      showErrorNotification("Invalid index passed to runSpecificInspection: $index")
+      log.severe("Invalid index passed to runSpecificInspection: $index")
+      return
+    }
+
+    val (i, complete) = loadedInspections[index]
+    if (complete) {
+      showWarningNotification("Inspection ${i.homeId} has already been completed.")
+      log.warning("Inspection ${i.homeId} has already been completed.")
+      return
+    }
+
+    val result = runInspection(i)
+
+    if (!result) {
+      return
+    }
+
+    loadedInspections.remove(index, index + 1)
+    loadedInspections.add(i to true)
+  }
+
+  private val loadingLock: ObjectProperty<Any?> = objectProperty(null)
+  private val runningLock: ObjectProperty<Any?> = objectProperty(null)
+  private val wordReplacer: DocsWordReplacer by lazy { DocsWordReplacer(DriveService, DocsService, OwnerDataService) }
+
+  private fun runInspection(inspection: InspectionData): Boolean {
+    if (runningLock.get() != null) {
+      showWarningNotification("Run is currently locked.")
+      return false
+    }
+
+    showInfoNotification("Starting Run on Inspection for ${inspection.homeId}")
+    runningLock.set({})
+    val result = wordReplacer.runOn(inspection)
+    showInfoNotification(result.textLog)
+    log.warning(result.textLog)
+
+    runLater(Duration(500.0)) { runningLock.set(null) }
+    return if (result.thrown.isNotEmpty()) {
+      val messages = result.thrown.filter { it.message != null }.map { it.message }.joinToString("\n")
+      showErrorNotification("An exception was thrown by run on ${inspection.homeId}.${if (messages.isNotEmpty()) "\nMessages: $messages" else ""}")
+      log.severe("An exception was thrown by run on ${inspection.homeId}.${if (messages.isNotEmpty()) "\nMessages: $messages" else ""}")
+      false
+    } else {
+      showInfoNotification("Run completed without exception. Consider it complete.")
+      log.warning("Run completed without exception. Consider it complete.")
+      true
+    }
+  }
+
+  private fun loadRandomInspection(maxAttempts: Int = 25) {
+    if (loadingLock.get() != null) {
+      showWarningNotification("Load is currently locked.")
+      return
+    }
+
+    loadingLock.set({})
+    val max = if (maxAttempts <= 1) 25 else maxAttempts
+    var attempts = 0
+    while (true) {
+      val i = InspectionDataService.inspections.values.random()
+      if (
+        loadedInspections
+          .map { it.first }
+          .none { it.homeId == i.homeId }
+      ) {
+        loadedInspections.add(i to false)
+        break
+      } else {
+        attempts += 1
+      }
+
+      if (attempts >= max) {
+        log.warning("Unable to get a new Inspection after $attempts attempts.")
+        break
+      }
+    }
+
+    loadingLock.set(null)
+  }
+
+  // private fun loadSpecificInspection()
 }

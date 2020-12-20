@@ -50,6 +50,28 @@ object Deps {
 
   const val Faker = "io.github.serpro69:kotlin-faker:${Versions.KotlinFaker}"
 
+  object Validation {
+    const val Konform = "io.konform:konform-jvm:${Versions.Validation.Konform}"
+    const val Kalidation = "com.capraro:kalidation:${Versions.Validation.Kalidation}"
+
+    object Valiktor {
+      private const val base = "org.valiktor:valiktor"
+      private const val version = Versions.Validation.Valiktor
+
+      const val Core = "$base-core:$version"
+      const val JavaMoney = "$base-javamoney:$version"
+      const val JavaTime = "$base-javatime:$version"
+      const val JodaMoney = "$base-jodamoney:$version"
+      const val JodaTime = "$base-jodatime:$version"
+      const val Spring = "$base-spring:$version"
+      const val SpringBootAutoConfigure = "$base-spring-boot-autoconfigure:$version"
+      const val SpringBootStarter = "$base-spring-boot-starter:$version"
+      const val Test = "$base-test:$version"
+    }
+  }
+
+  const val Jafama = "net.jafama:jafama:${Versions.Jafama}"
+
   object Exposed {
     private const val group = "org.jetbrains.exposed"
     private const val prefix = "$group:exposed-"
@@ -60,6 +82,8 @@ object Deps {
     const val JodaTime = "$prefix-jodatime:${Versions.Exposed}"
     const val JavaTime = "$prefix-java-time:${Versions.Exposed}"
   }
+
+  const val JavaStringSimilarity = "info.debatty:java-string-similarity:${Versions.JavaStringSimilarity}"
 
   object Db {
     const val H2 = "com.h2database:h2:${Versions.Db.H2}"

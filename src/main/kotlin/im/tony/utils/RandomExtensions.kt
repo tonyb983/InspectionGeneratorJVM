@@ -1,17 +1,22 @@
 package im.tony.utils
 
 import io.github.serpro69.kfaker.Faker
+import io.github.serpro69.kfaker.provider.ESport
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.logging.Level
 import kotlin.random.Random
 
 private val faker: Faker by lazy { Faker() }
-
-private val random: Random by lazy { Random(0) }
+private val random: Random by lazy {
+  Random(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC))
+}
+private val fixedRand: Random by lazy { Random(0) }
 private val levels: List<Level> by lazy { listOf(Level.FINER, Level.FINE, Level.FINEST, Level.INFO, Level.WARNING, Level.SEVERE, Level.CONFIG) }
 
-fun getRandomLogLevel(): Level = levels.random()
+fun getRandomLogLevel(useFixed: Boolean = false): Level = levels.random(if (useFixed) fixedRand else random)
 
-fun getRandomQuote(): String = when (random.nextInt(0, 120)) {
+fun getRandomQuote(useFixed: Boolean = false): String = when ((if (useFixed) fixedRand else random).nextInt(0, 120)) {
   in 0..5 -> "His last words were ... '${faker.quote.famousLastWords()}'"
   in 6..10 -> "Matz said ... '${faker.quote.matz()}'"
 
@@ -44,3 +49,6 @@ fun getRandomQuote(): String = when (random.nextInt(0, 120)) {
 
   else -> "Whoops"
 }
+
+fun ESport.quote(): String =
+  "Today ${players()} of ${this.teams()} played ${this.teams()} in ${this.games()} during the ${this.events()} in the ${this.leagues()}"

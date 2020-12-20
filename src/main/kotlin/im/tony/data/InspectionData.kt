@@ -1,13 +1,12 @@
 package im.tony.data
 
 import im.tony.utils.empty
-import im.tony.utils.isOneOf
+import io.konform.validation.Validation
+import io.konform.validation.jsonschema.pattern
 import tornadofx.toObservable
 
 private typealias StringCreator = (InspectionData) -> String
 typealias InspectionDataValidatorType = (InspectionData) -> Boolean
-
-data class InspectionDataValidator(val failureMessage: StringCreator, val validator: InspectionDataValidatorType)
 
 class OwnerNotFoundException(inspectionData: InspectionData) : RuntimeException("Unable to find Owner matching Inspection Data: $inspectionData")
 
@@ -20,21 +19,10 @@ data class InspectionData(
   val streetId: String = streetName.split(" ").map { it.trim().first().toUpperCase() }.joinToString("")
   val homeId: String = "${streetNumber.trim()}$streetId"
   val issueCount: Int = if (isGood) 0 else issues.size
-  val isValid: Boolean = validators.all { it.validator.invoke(this) }
   val failures: MutableList<String> = mutableListOf()
 
   val issuesObservable = issues.toObservable()
   val failuresObservable = failures.toObservable()
-
-  private fun checkAgainst(idv: InspectionDataValidator): Boolean {
-    val result = idv.validator.invoke(this)
-
-    if (!result) {
-      failures.add(idv.failureMessage.invoke(this))
-    }
-
-    return result
-  }
 
   fun mapToString(input: String): String = when (input) {
     "%STREET_NUM%" -> this.streetNumber
@@ -54,38 +42,6 @@ data class InspectionData(
 
       return InspectionData(num, name, good, cells)
     }
-
-    private fun idv(message: String, validator: InspectionDataValidatorType): InspectionDataValidator =
-      InspectionDataValidator({ message }, validator)
-
-    private fun idv(validator: InspectionDataValidatorType, msgGetter: StringCreator) = InspectionDataValidator(msgGetter, validator)
-
-    val validators: MutableList<InspectionDataValidator> = mutableListOf(
-      idv("Strings aren't empty.") {
-        listOf(
-          it.streetNumber.isNotBlank(),
-          it.streetName.isNotBlank(),
-          it.streetId.isNotBlank(),
-          it.homeId.isNotBlank(),
-        ).all { true }
-      },
-      idv("Street number is out of range.") { data ->
-        data.streetNumber.toIntOrNull()?.run { this in 1..30 && this in 8300..8500 && this in 18300..18600 } ?: false
-      },
-      idv({ d -> (d.isGood && d.issueCount <= 0) || (!d.isGood && d.issueCount in 1..5) }) { "Issue count invalid. IsGood: ${it.isGood} | Issue Count: ${it.issueCount}" },
-      idv({ d ->
-        d.streetId.isOneOf(
-          "CJC",
-          "CJW",
-          "GC",
-          "GW",
-          "TRD",
-          "TRC",
-          "TRP",
-          "FHW"
-        )
-      }) { "Received invalid street abbreviation '${it.streetId}'." },
-    )
 
     val tester1 by lazy {
       InspectionData(
@@ -120,6 +76,12 @@ data class InspectionData(
         )
       )
     }
+  }
+}
+
+val InspectionDataValidator = Validation<InspectionData> {
+  InspectionData::homeId required {
+    pattern(Regex("[0-9]{1,5}[A-Z]{2,3}")) hint "Home ID should be the house number followed by the street name abbreviation i.e. 18451GW or 8454TRD or 14CJC"
   }
 }
 

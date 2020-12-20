@@ -1,12 +1,15 @@
 package im.tony.ui.views
 
 import javafx.beans.property.ObjectProperty
+import javafx.event.EventHandler
 import javafx.geometry.Pos
+import javafx.scene.control.MenuBar
 import javafx.util.Duration
 import kotlinx.coroutines.*
 import org.controlsfx.control.StatusBar
 import tornadofx.*
 import tornadofx.controlsfx.statusbar
+import java.util.logging.Level
 import kotlin.math.round
 
 class SecondMain : View("My View") {
@@ -16,6 +19,37 @@ class SecondMain : View("My View") {
 
   // private val notifierActive = obj
   private var statusBar: StatusBar by singleAssign()
+
+  /**
+   * Called when a Component becomes the Scene root or
+   * when its root node is attached to another Component.
+   * @see UIComponent.add
+   */
+  override fun onDock() {
+    super.onDock()
+    workspace.add(createMenuBar())
+  }
+
+  private fun createMenuBar(): MenuBar {
+    return menubar {
+      this.menu("Something") {
+        this.item("Something 1") {
+          this.onAction = EventHandler { log.log(Level.WARNING, "Something 1 pressed.") }
+        }
+        this.item("Something 2") {
+          this.onAction = EventHandler { log.log(Level.WARNING, "Something 2 pressed.") }
+        }
+        this.separator()
+        this.checkmenuitem("Check Menu Item") {
+          this.onAction = EventHandler { log.warning("check menu handler: $it") }
+        }
+      }
+      this.menu("Another Thing") {
+        this.item("Another 1")
+        this.item("And another")
+      }
+    }
+  }
 
   private fun runProgress() {
     if (isRunning) return
@@ -61,7 +95,8 @@ class SecondMain : View("My View") {
       fitToParentWidth()
       prefHeight(40.0)
       hbox(10.0, Pos.CENTER) {
-        button("Start Progress") {
+
+      button("Start Progress") {
           disableWhen { notifier.isNotNull }
           action {
             runProgress()
