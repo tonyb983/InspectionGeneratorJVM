@@ -1,6 +1,10 @@
 package im.tony.data
 
 import im.tony.utils.empty
+import io.konform.validation.Validation
+import io.konform.validation.jsonschema.maxLength
+import io.konform.validation.jsonschema.minLength
+import io.konform.validation.jsonschema.pattern
 
 /*
 ID
@@ -16,8 +20,8 @@ data class OwnerData(
   val familyName: String,
   val propAddressLine1: String,
   val propAddressLine2: String,
-  val altAddressLine1: String?,
-  val altAddressLine2: String?
+  val altAddressLine1: String? = null,
+  val altAddressLine2: String? = null,
 ) {
   fun hasAltAddress() = altAddressLine1 != null && altAddressLine2 != null
 
@@ -43,20 +47,22 @@ data class OwnerData(
     )
 
   companion object {
-    fun parse(cells: MutableList<String>): OwnerData {
+    fun parse(cells: Collection<String>): OwnerData {
       require(cells.isNotEmpty()) { "Cell array should not be empty." }
       require(cells.size in 1..6) { "Cell array size should be between 1 and 6." }
 
-      val homeId = cells.removeFirstOrNull()
-      require(homeId != null) { "Home ID could not be retrieved from cells." }
-      val familyName = cells.removeFirstOrNull()
-      require(familyName != null) { "Family Name could not be retrieved from cells." }
-      val propAddressLine1 = cells.removeFirstOrNull()
-      require(propAddressLine1 != null) { "Property Address Line 1 could not be retrieved from cells." }
-      val propAddressLine2 = cells.removeFirstOrNull()
-      require(propAddressLine2 != null) { "Property Address Line 2 could not be retrieved from cells." }
-      val altAddressLine1 = cells.removeFirstOrNull()
-      val altAddressLine2 = cells.removeFirstOrNull()
+      val mut = cells.toMutableList()
+
+      val homeId = mut.removeFirstOrNull()
+      require(homeId != null) { "Home ID could not be retrieved from mut." }
+      val familyName = mut.removeFirstOrNull()
+      require(familyName != null) { "Family Name could not be retrieved from mut." }
+      val propAddressLine1 = mut.removeFirstOrNull()
+      require(propAddressLine1 != null) { "Property Address Line 1 could not be retrieved from mut." }
+      val propAddressLine2 = mut.removeFirstOrNull()
+      require(propAddressLine2 != null) { "Property Address Line 2 could not be retrieved from mut." }
+      val altAddressLine1 = mut.removeFirstOrNull()
+      val altAddressLine2 = mut.removeFirstOrNull()
 
       return OwnerData(
         homeId,
@@ -78,7 +84,6 @@ data class OwnerData(
         null,
       )
     }
-
     val tester2 by lazy {
       OwnerData(
         "1CJC",
@@ -89,7 +94,6 @@ data class OwnerData(
         "Rockville, MD 20850",
       )
     }
-
     val tester3 by lazy {
       OwnerData(
         "0ABC",
@@ -100,5 +104,25 @@ data class OwnerData(
         "Where you get all that from?!",
       )
     }
+  }
+}
+
+val OwnerDataValidator = Validation<OwnerData> {
+  OwnerData::homeId required {
+    pattern(Regex(RegexPatterns.homeIdRegexExact)) hint "Home ID should be the house number followed by the street name abbreviation. I.e. 18451GW or 8454TRD or 14CJC."
+    minLength(3) hint "The shortest Home ID possible is 1GC (and the like)."
+    maxLength(8) hint "The longest Home ID possible is 18400CJC (and the like)."
+  }
+  OwnerData::familyName required {
+    pattern(Regex(RegexPatterns.properCase)) hint "Family name should be in proper case."
+    minLength(2) hint "Family name should probably be longer than 1 character."
+  }
+  OwnerData::propAddressLine1 required {
+    pattern(Regex(RegexPatterns.addressLine1, RegexOption.IGNORE_CASE)) hint "Property address line 1 should be in the format 12345 Street Name Way"
+    minLength(13) hint "Address line 1 should be at least 13 characters, probably more. (13 is based on '1 Gardenia Ct', the shortest Westwind address)"
+    maxLength(23) hint "Address line 1 should be at most 23 characters. (23 is based on '18401 Cape Jasmine Way', which should be the longest Westwind address)"
+  }
+  OwnerData::propAddressLine2 required {
+    pattern(Regex("Gaithersburg, MD 2087[94]"))
   }
 }

@@ -1,10 +1,12 @@
 package im.tony.google.services
 
 import com.google.api.services.drive.Drive
+import im.tony.events.DriveFileCreatedEvent
 import im.tony.google.extensions.drive.*
 import im.tony.google.types.DriveFile
 import im.tony.google.types.DriveFileList
 import im.tony.google.types.DriveFileListRequest
+import tornadofx.EventBus
 
 // import com.google.api.services.drive.model.File as DriveFile
 
@@ -78,6 +80,7 @@ private val DriveServiceImpl =
   object :
     GoogleDriveService,
     GenericService<Drive>(lazy { ServiceCreator.createDrive() }) {
+    val eventBus by lazy { EventBus() }
     override var defaultCorporas: DriveCorporas = DriveCorporas.User
     override var defaultSpaces: DriveSpaces = DriveSpaces.Drive
 
@@ -131,13 +134,16 @@ private val DriveServiceImpl =
       if (name != null) file.name = name
       setCreateOptions.invoke(file)
 
-      return file
+      val created = service.files().create(file).execute()
+      eventBus.fire(DriveFileCreatedEvent(created.id, created.name, created.mimeType))
+      return created
     }
 
     override fun copyFile(originalId: String, newName: String, modification: (DriveFile.() -> Unit)?): DriveFile = service
       .files()
       .copy(originalId, DriveFile().setName(newName).apply { modification?.invoke(this) })
       .execute()
+      .also { eventBus.fire(DriveFileCreatedEvent(it.id, it.name, it.mimeType)) }
   }
 
 val DriveService: GoogleDriveService = DriveServiceImpl

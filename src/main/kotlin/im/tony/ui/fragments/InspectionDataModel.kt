@@ -11,7 +11,6 @@ class InspectionDataModel : ItemViewModel<InspectionData>() {
   val streetIdProperty = bind(InspectionData::streetId)
   val homeIdProperty = bind(InspectionData::homeId)
   val issueCountProperty = bind(InspectionData::issueCount)
-  val isValidProperty = bind(InspectionData::isValid)
 }
 
 

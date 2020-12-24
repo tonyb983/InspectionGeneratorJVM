@@ -1,33 +1,15 @@
 package im.tony.ui.views
 
-import im.tony.data.InspectionData
-import im.tony.data.OwnerData
 import im.tony.data.services.InspectionDataService
 import im.tony.data.services.OwnerDataService
 import javafx.geometry.Orientation
 import javafx.geometry.Pos
 import javafx.scene.Parent
 import javafx.scene.layout.Priority
-import kotlinx.collections.immutable.ImmutableCollection
 import tornadofx.*
 
 class DataView : View("Data View") {
   private val inspections by lazy { InspectionDataService.inspections.values }
-  private val invalidInspections by lazy {
-    InspectionDataService
-      .inspections
-      .values
-      .filter { !it.isValid }
-  }
-  private val invalidText by lazy {
-    if (invalidInspections.size < 1) "Invalid Inspections Empty"
-    else
-      invalidInspections
-        .flatMap { it.failures }
-        .groupBy { it }
-        .map { "Failure: ${it.key}\nCount: ${it.value.size}\n" }
-        .joinToString("\n")
-  }
 
   private val owners by lazy { OwnerDataService.owners.values }
 
@@ -47,16 +29,6 @@ class DataView : View("Data View") {
       spacer(Priority.SOMETIMES)
       text("Error Counts") {
         isUnderline = true
-        style {
-          baseColor = c(230, 20, 20)
-        }
-      }
-      text(invalidInspections.size.toString()) {
-        style {
-          baseColor = c(230, 20, 20)
-        }
-      }
-      text(invalidText) {
         style {
           baseColor = c(230, 20, 20)
         }

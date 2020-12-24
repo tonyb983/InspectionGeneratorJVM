@@ -197,6 +197,8 @@ dependencies {
   testImplementation(Deps.Testing.Kotest.Assertions.Compiler)
   testImplementation(Deps.Testing.Kotest.Assertions.Json)
   testImplementation(Deps.Testing.Kotest.Assertions.Sql)
+  testImplementation(Deps.Testing.Kotest.Assertions.Konform)
+  testImplementation(Deps.Testing.Kotest.Assertions.Arrow)
   testImplementation(Deps.Testing.Kotest.Property) // for kotest property test
   testImplementation(Deps.Testing.Kotest.Extensions.Http)
   testImplementation(Deps.Testing.Kotest.Extensions.MockServer)

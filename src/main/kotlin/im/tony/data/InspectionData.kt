@@ -2,13 +2,9 @@ package im.tony.data
 
 import im.tony.utils.empty
 import io.konform.validation.Validation
-import io.konform.validation.jsonschema.pattern
+import io.konform.validation.jsonschema.*
+import org.intellij.lang.annotations.MagicConstant
 import tornadofx.toObservable
-
-private typealias StringCreator = (InspectionData) -> String
-typealias InspectionDataValidatorType = (InspectionData) -> Boolean
-
-class OwnerNotFoundException(inspectionData: InspectionData) : RuntimeException("Unable to find Owner matching Inspection Data: $inspectionData")
 
 data class InspectionData(
   val streetNumber: String,
@@ -18,13 +14,14 @@ data class InspectionData(
 ) {
   val streetId: String = streetName.split(" ").map { it.trim().first().toUpperCase() }.joinToString("")
   val homeId: String = "${streetNumber.trim()}$streetId"
-  val issueCount: Int = if (isGood) 0 else issues.size
-  val failures: MutableList<String> = mutableListOf()
+  val issueCount: Int = issues.size
 
   val issuesObservable = issues.toObservable()
-  val failuresObservable = failures.toObservable()
 
-  fun mapToString(input: String): String = when (input) {
+  fun mapToString(
+    @MagicConstant(stringValues = ["%STREET_NUM%", "%STREET_NAME%", "%ISSUE_LIST%"])
+    input: String
+  ): String = when (input) {
     "%STREET_NUM%" -> this.streetNumber
     "%STREET_NAME%" -> this.streetName
     "%ISSUE_LIST%" -> this.issues.joinToString("\n")
@@ -32,56 +29,60 @@ data class InspectionData(
   }
 
   companion object {
-    fun parse(cells: MutableList<String>): InspectionData {
+    fun parse(cells: Collection<String>): InspectionData {
       require(cells.isNotEmpty()) { "Cell array should not be empty." }
       require(cells.size in 3..9) { "Cell array size should be between 3 and 9." }
 
-      val num = cells.removeAt(0)
-      val name = cells.removeAt(0)
-      val good = cells.removeAt(0).let { it == "Yes" }
+      val mut = cells.toMutableList()
 
-      return InspectionData(num, name, good, cells)
-    }
+      val num = mut.removeFirst()
+      val name = mut.removeFirst()
+      val good = mut.removeFirst().let { it == "Yes" }
 
-    val tester1 by lazy {
-      InspectionData(
-        "18400",
-        "",
-        true,
-      )
-    }
-
-    val tester2 by lazy {
-      InspectionData(
-        "1",
-        "Cape Jasmine Court",
-        false,
-        mutableListOf(
-          "Siding - Mildew / Dirt on siding.",
-          "Rotten wood trim needs to be repaired / replaced.",
-          "Non-compliant fence on side facing Westwind neighbor.",
-        )
-      )
-    }
-
-    val tester3 by lazy {
-      InspectionData(
-        "0",
-        "Atlanta Bread Court",
-        true,
-        mutableListOf(
-          "This should not be here.",
-          "No seriously your house is beautiful this is a mistake.",
-          "ABANDON ALL HOPE YE WHO ENTER HERE",
-        )
-      )
+      return InspectionData(num, name, good, mut)
     }
   }
 }
 
 val InspectionDataValidator = Validation<InspectionData> {
   InspectionData::homeId required {
-    pattern(Regex("[0-9]{1,5}[A-Z]{2,3}")) hint "Home ID should be the house number followed by the street name abbreviation i.e. 18451GW or 8454TRD or 14CJC"
+    pattern(Regex(RegexPatterns.homeIdRegexExact)) hint "Home ID should be the house number followed by the street name abbreviation. I.e. 18451GW or 8454TRD or 14CJC."
+  }
+  InspectionData::streetId required {
+    pattern(Regex(RegexPatterns.streetIdRegexExact, RegexOption.IGNORE_CASE))
+    this.minLength(2)
+    this.maxLength(3)
+    this.enum("CJC", "CJW", "FHW", "GC", "GW", "TRC", "TRD", "TRP")
+  }
+  InspectionData::streetNumber required {
+    pattern(Regex(RegexPatterns.streetNumberRegex)) hint "Street number should be a 1-5 digit number in string form."
+  }
+  InspectionData::streetName required {
+    pattern(
+      Regex(
+        RegexPatterns.streetNameRegexExact,
+        RegexOption.IGNORE_CASE
+      )
+    ) hint "Street name should match one of the valid Westwind street names."
+  }
+
+  this.addConstraint(
+    "If property isGood there should be no issues, " +
+      "if isGood is false there should be at least one issue."
+  ) { (it.isGood && it.issues.size < 1) || (!it.isGood && it.issues.size >= 1) }
+
+  InspectionData::isGood required {
+    addConstraint("Should be true when there are no issues, and false when there is one or more issues.") { i: InspectionData ->
+      (i.isGood && i.issues.size < 1) || (!i.isGood && i.issues.size >= 1)
+    }
+  }
+  InspectionData::issues required {
+    this.minItems(0) hint "Issues should have at least 0 items."
+    this.maxItems(5) hint "Issues should have at most 5 items."
+  }
+  InspectionData::issueCount required {
+    this.minimum(0) hint "IssueCount should be at least 0."
+    this.maximum(5) hint "IssueCount should be at most 5."
   }
 }
 

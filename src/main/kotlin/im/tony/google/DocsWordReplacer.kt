@@ -93,6 +93,7 @@ class DocsWordReplacer(
     val log = StringBuilder("")
     log.appendLine("Starting Replacement for ${inspectionData.streetNumber} ${inspectionData.streetName} (ID: ${inspectionData.homeId})")
 
+    // Get owner from OwnerDataService
     val owner = runCatching {
       log.appendLine("Getting inspection property owner.")
       ownerDataService.owners.getValue(inspectionData.homeId)
@@ -101,6 +102,7 @@ class DocsWordReplacer(
       return Result(thrown = it, textLog = log.toString())
     }
 
+    // Get the Docs file for the correct template
     val original = runCatching {
       log.appendLine("Getting ${if (inspectionData.isGood) "NO VIOLATION" else "VIOLATION"} document template.")
       if (inspectionData.isGood) {
@@ -113,6 +115,7 @@ class DocsWordReplacer(
       return Result(thrown = it, textLog = log.toString())
     }
 
+    // Try to get a valid parent folder
     log.appendLine("Trying to find parent folder name.")
     var parentFolder: DriveFile? = null
     val (couldSplit, parentName) = splitNumbersAndLetters(inspectionData.homeId)
@@ -129,6 +132,7 @@ class DocsWordReplacer(
       log.appendLine("Parent folder ${if (parentFolder == null) "WAS NOT" else "WAS"} found. ParentFolder: $parentFolder")
     }
 
+    // Make the DriveFile copy for the letter going to the property address
     val toProp = runCatching {
       log.appendLine("Making copy for property address.")
       driveService.copyFile(original.documentId, "${inspectionData.homeId} - To Property") {
@@ -141,6 +145,7 @@ class DocsWordReplacer(
       return Result(thrown = it, textLog = log.toString())
     }
 
+    // Get a Docs Document from the DriveFile
     val toPropDoc = runCatching {
       log.appendLine("Getting Docs file for property address copy.")
       docsService.getDocument(toProp.id)
@@ -149,6 +154,7 @@ class DocsWordReplacer(
       return Result(thrown = it, textLog = log.toString())
     }
 
+    // Create the word replacement requests in batch form
     val batch1 = runCatching {
       log.appendLine("Creating batch update request for property address copy.")
       createReplacementsFor(inspectionData, owner, false)
@@ -157,6 +163,7 @@ class DocsWordReplacer(
       return Result(toPropDoc, thrown = it, textLog = log.toString())
     }
 
+    // Execute the batch update request and save the response
     val resp1 = runCatching {
       log.appendLine("Executing update batch for property address copy.")
       docsService.executeRequests(toPropDoc.documentId, batch1)
@@ -165,11 +172,13 @@ class DocsWordReplacer(
       return Result(toPropDoc, thrown = it, textLog = log.toString())
     }
 
+    // If the owner doesn't have a alternate address we're done
     if (!owner.hasAltAddress()) {
       log.appendLine("Owners do not have alternate address, returning successfully.")
       return Result(toPropDoc, resp1)
     }
 
+    // Create the DriveFile copy for the alternate address letter
     val toAlt = runCatching {
       log.appendLine("Making copy for alternate address.")
       driveService.copyFile(original.documentId, "${inspectionData.homeId} - To Alternate") {
@@ -182,6 +191,7 @@ class DocsWordReplacer(
       return Result(toPropDoc, resp1, thrown = it, textLog = log.toString())
     }
 
+    // Get the Docs Document for the alternate address copy
     val toAltDoc = this.runCatching {
       log.appendLine("Getting Docs file for alternate address copy.")
       docsService.getDocument(toAlt.id)
@@ -190,6 +200,7 @@ class DocsWordReplacer(
       return Result(toPropDoc, resp1, thrown = it, textLog = log.toString())
     }
 
+    // Create the word replacement batch for the alternate letter
     val batch2 = runCatching {
       log.appendLine("Creating batch update request for alternate address copy.")
       createReplacementsFor(inspectionData, owner, true)
@@ -198,6 +209,7 @@ class DocsWordReplacer(
       return Result(toPropDoc, resp1, true, toAltDoc, thrown = it, textLog = log.toString())
     }
 
+    // Execute the word replacement requests for the alternate document
     val resp2 = runCatching {
       log.appendLine("Executing update batch for alternate address copy.")
       docsService.executeRequests(toAltDoc.documentId, batch2)
@@ -206,6 +218,7 @@ class DocsWordReplacer(
       return Result(toPropDoc, resp1, true, toAltDoc, thrown = it, textLog = log.toString())
     }
 
+    // Fin
     log.appendLine("Run complete.")
     return Result(toPropDoc, resp1, true, toAltDoc, resp2, textLog = log.toString())
   }

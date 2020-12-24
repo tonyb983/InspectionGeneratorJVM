@@ -10,10 +10,16 @@ import tornadofx.App
 import tornadofx.SingleAssignThreadSafetyMode
 import tornadofx.UIComponent
 import tornadofx.singleAssign
+import kotlin.collections.set
 
 class MyApp : App(SheetsWorkspace::class, Styles::class) {
   private var primaryScene: Scene by singleAssign(SingleAssignThreadSafetyMode.SYNCHRONIZED)
   private var scenicViewAction: () -> Unit by singleAssign(SingleAssignThreadSafetyMode.SYNCHRONIZED)
+  private var sheetsWorkspace: SheetsWorkspace by singleAssign(SingleAssignThreadSafetyMode.SYNCHRONIZED)
+
+  init {
+
+  }
 
   override fun createPrimaryScene(view: UIComponent): Scene {
     primaryScene = super.createPrimaryScene(view)
@@ -23,7 +29,7 @@ class MyApp : App(SheetsWorkspace::class, Styles::class) {
   }
 
   override fun onBeforeShow(view: UIComponent) {
-    // workspace.dock<MainView>()
+    sheetsWorkspace = workspace as SheetsWorkspace
     workspace.dock<SecondMain>()
     workspace.accelerators[Const.ScenicViewShortcut] = scenicViewAction
     UiServices.init(workspace.log)

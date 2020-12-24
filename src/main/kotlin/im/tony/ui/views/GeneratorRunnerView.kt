@@ -3,6 +3,7 @@ package im.tony.ui.views
 import im.tony.data.InspectionData
 import im.tony.data.services.InspectionDataService
 import im.tony.data.services.OwnerDataService
+import im.tony.events.DriveFileCreatedEvent
 import im.tony.google.DocsWordReplacer
 import im.tony.google.services.DocsService
 import im.tony.google.services.DriveService
@@ -19,6 +20,21 @@ import tornadofx.*
 
 class GeneratorRunnerView : View("Generator") {
   private val loadedInspections: ObservableList<Pair<InspectionData, Boolean>> = observableListOf()
+  private val loadingLock: ObjectProperty<Any?> = objectProperty()
+  private val runningLock: ObjectProperty<Any?> = objectProperty()
+  private val wordReplacer: DocsWordReplacer by lazy { DocsWordReplacer(DriveService, DocsService, OwnerDataService) }
+
+  init {
+    initializeEventListener()
+  }
+
+  private fun initializeEventListener() {
+    println("Subscribing to DriveFileCreatedEvents")
+    subscribe<DriveFileCreatedEvent> {
+      println("DriveFileCreatedEvent received: $it")
+      log.warning("DriveFileCreatedEvent received: $it")
+    }
+  }
 
   override val root = pane {
     fitToParentSize()
@@ -29,15 +45,31 @@ class GeneratorRunnerView : View("Generator") {
       hbox {
         prefHeight(40.0)
         fitToParentWidth()
-        button("Load Inspection") {
+        button("Load Random Inspection") {
+          disableWhen { loadingLock.isNotNull }
           action {
             loadRandomInspection()
           }
         }
 
-        button("Run Inspection") {
+        button("Load all Inspections") {
+          disableWhen { loadingLock.isNotNull }
+          action {
+            loadAllInspections()
+          }
+        }
+
+        button("Run Random Inspection") {
+          disableWhen { runningLock.isNotNull.and(loadingLock.isNotNull) }
           action {
             runRandomInspection()
+          }
+        }
+
+        button("Run All Inspections") {
+          disableWhen { runningLock.isNotNull }
+          action {
+            runAllInspections()
           }
         }
       }
@@ -259,10 +291,6 @@ class GeneratorRunnerView : View("Generator") {
     loadedInspections.add(i to true)
   }
 
-  private val loadingLock: ObjectProperty<Any?> = objectProperty(null)
-  private val runningLock: ObjectProperty<Any?> = objectProperty(null)
-  private val wordReplacer: DocsWordReplacer by lazy { DocsWordReplacer(DriveService, DocsService, OwnerDataService) }
-
   private fun runInspection(inspection: InspectionData): Boolean {
     if (runningLock.get() != null) {
       showWarningNotification("Run is currently locked.")
@@ -284,6 +312,7 @@ class GeneratorRunnerView : View("Generator") {
     } else {
       showInfoNotification("Run completed without exception. Consider it complete.")
       log.warning("Run completed without exception. Consider it complete.")
+      log.info(result.textLog)
       true
     }
   }
@@ -295,6 +324,7 @@ class GeneratorRunnerView : View("Generator") {
     }
 
     loadingLock.set({})
+    showInfoNotification("Loading random inspection.")
     val max = if (maxAttempts <= 1) 25 else maxAttempts
     var attempts = 0
     while (true) {
@@ -317,6 +347,72 @@ class GeneratorRunnerView : View("Generator") {
     }
 
     loadingLock.set(null)
+  }
+
+  private fun loadAllInspections() {
+    if (loadingLock.get() != null) {
+      showWarningNotification("Load is currently locked.")
+      return
+    }
+
+    loadingLock.set({})
+    showInfoNotification("Loading all unloaded inspections.")
+    val allKeys = InspectionDataService.inspections.keys
+    val keys = allKeys.subtract(loadedInspections.map { it.first.homeId })
+
+    if (keys.isNotEmpty()) {
+      keys.mapNotNull { InspectionDataService.inspections[it] }.mapTo(loadedInspections) { it to false }
+    }
+
+    runLater(Duration.seconds(0.25)) { loadingLock.set(null) }
+    return
+    //val unloaded = InspectionDataService.inspections.values.subtract(loadedInspections.map { it.first })
+    //unloaded.forEach { loadedInspections.add(it to false) }
+  }
+
+  private fun runAllInspections() {
+    if (runningLock.get() != null) {
+      showWarningNotification("Run is currently locked.")
+      log.warning("Run is currently locked.")
+      return
+    }
+    if (loadingLock.get() != null) {
+      showWarningNotification("Load is currently locked (run all needs both locks to run).")
+      log.warning("Load is currently locked (run all needs both locks to run).")
+      return
+    }
+
+    runningLock.set({})
+    loadingLock.set({})
+
+    showInfoNotification("Running all unrun inspections...")
+    val startTotal = loadedInspections.size
+    val (done, notDone) = loadedInspections.partition { it.second }
+    val doneCount = done.size
+    val notDoneCount = notDone.size
+    var completeCount = 0
+    var failCount = 0
+
+    if (notDone.isNotEmpty()) {
+      val completed = notDone.map { it.first }.map { it to runInspection(it) }
+      completeCount = completed.count { it.second }
+      failCount = completed.count { !it.second }
+      loadedInspections.clear()
+      loadedInspections.addAll(done)
+      loadedInspections.addAll(completed)
+    }
+
+    runLater(Duration.seconds(0.25)) {
+      runningLock.set(null)
+      loadingLock.set(null)
+    }
+
+    showInfoNotification("Run All Completed.\nStarting Size: $startTotal\nStarting Complete Count: $doneCount\nStarting Incomplete Size: $notDoneCount\nCompleted: $completeCount | Failed: $failCount\nEnding Size: ${loadedInspections.size}")
+
+    if (startTotal != loadedInspections.size) {
+      showErrorNotification("Error, starting size does not match ending size, something probably went wrong :(")
+      log.severe("Error, starting size does not match ending size, something probably went wrong :(")
+    }
   }
 
   // private fun loadSpecificInspection()
