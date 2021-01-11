@@ -46,6 +46,10 @@ data class OwnerData(
       propAddressLine2
     )
 
+  override fun toString(): String = "" +
+    "Owner $homeId | Family Name: $familyName | Property: $propAddressLine1, $propAddressLine2 |" +
+    " Has Alternate: ${hasAltAddress()}" + if (!hasAltAddress()) "" else "$altAddressLine1, $altAddressLine2"
+
   companion object {
     fun parse(cells: Collection<String>): OwnerData {
       require(cells.isNotEmpty()) { "Cell array should not be empty." }

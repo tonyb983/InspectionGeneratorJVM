@@ -16,7 +16,7 @@ data class InspectionData(
   val homeId: String = "${streetNumber.trim()}$streetId"
   val issueCount: Int = issues.size
 
-  val issuesObservable = issues.toObservable()
+  val issuesObservable by lazy { issues.toObservable() }
 
   fun mapToString(
     @MagicConstant(stringValues = ["%STREET_NUM%", "%STREET_NAME%", "%ISSUE_LIST%"])
@@ -27,6 +27,9 @@ data class InspectionData(
     "%ISSUE_LIST%" -> this.issues.joinToString("\n")
     else -> String.empty
   }
+
+  override fun toString() =
+    "Inspection $homeId | $streetNumber $streetName | Is Good: $isGood" + if (isGood) "" else " | Issues: ${issues.joinToString(" / ")}"
 
   companion object {
     fun parse(cells: Collection<String>): InspectionData {

@@ -14,15 +14,22 @@ import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.scene.text.TextAlignment
 import javafx.util.Duration
+import kotlinx.coroutines.*
+import kotlinx.coroutines.javafx.JavaFx
 import org.controlsfx.control.Notifications
 import org.controlsfx.control.action.Action
 import tornadofx.*
+import kotlin.coroutines.CoroutineContext
 
-class GeneratorRunnerView : View("Generator") {
+class GeneratorRunnerView : View("Generator"), CoroutineScope {
   private val loadedInspections: ObservableList<Pair<InspectionData, Boolean>> = observableListOf()
   private val loadingLock: ObjectProperty<Any?> = objectProperty()
   private val runningLock: ObjectProperty<Any?> = objectProperty()
   private val wordReplacer: DocsWordReplacer by lazy { DocsWordReplacer(DriveService, DocsService, OwnerDataService) }
+
+  private var job = Job()
+  override val coroutineContext: CoroutineContext
+    get() = Dispatchers.JavaFx + job
 
   init {
     initializeEventListener()
@@ -34,6 +41,12 @@ class GeneratorRunnerView : View("Generator") {
       println("DriveFileCreatedEvent received: $it")
       log.warning("DriveFileCreatedEvent received: $it")
     }
+  }
+
+  override fun onUndock() {
+    super.onUndock()
+    job.cancel()
+    job = Job()
   }
 
   override val root = pane {
@@ -69,7 +82,7 @@ class GeneratorRunnerView : View("Generator") {
         button("Run All Inspections") {
           disableWhen { runningLock.isNotNull }
           action {
-            runAllInspections()
+            this@GeneratorRunnerView.launch { runAllInspections() }
           }
         }
       }
@@ -92,7 +105,7 @@ class GeneratorRunnerView : View("Generator") {
                   }
                   item("Run Inspection") {
                     action {
-                      runSpecificInspection(this@cellFormat.index)
+                      this@GeneratorRunnerView.launch { runSpecificInspection(this@cellFormat.index) }
                     }
                   }
                 }
@@ -199,132 +212,144 @@ class GeneratorRunnerView : View("Generator") {
     thresholdCount = thresholdCount,
   ).showError()
 
-  private fun runRandomInspection() {
+  private fun runRandomInspection() = this@GeneratorRunnerView.launch(coroutineContext) {
     if (runningLock.get() != null) {
-      showWarningNotification("Run is currently locked.")
-      return
+      runLater { showWarningNotification("Run is currently locked.") }
+      return@launch
     }
 
     showInfoNotification("Starting random inspection.")
 
     if (loadedInspections.size < 1) {
-      showWarningNotification(
-        "No inspections are loaded, load at\nleast one inspection before generating.",
-        "Inspection List Empty",
-        Action {
-          if (it.isConsumed) {
-            return@Action
-          }
-          loadRandomInspection(10)
-        },
-        threshold = emptyListThreshold()
-      )
+      runLater {
+        showWarningNotification(
+          "No inspections are loaded, load at\nleast one inspection before generating.",
+          "Inspection List Empty",
+          Action {
+            if (it.isConsumed) {
+              return@Action
+            }
+            loadRandomInspection(10)
+          },
+          threshold = emptyListThreshold()
+        )
+      }
       log.warning("No inspections are loaded, load at least one inspection before generating.")
-      return
+      return@launch
     }
     if (loadedInspections.all { it.second }) {
-      showWarningNotification(
-        "All loaded inspections are completed.\nLoad more inspections before trying again.",
-        "Inspections Complete",
-        Action {
-          if (it.isConsumed) {
-            return@Action
-          }
-          loadRandomInspection(10)
-        },
-        threshold = emptyListThreshold()
-      )
+      runLater {
+        showWarningNotification(
+          "All loaded inspections are completed.\nLoad more inspections before trying again.",
+          "Inspections Complete",
+          Action {
+            if (it.isConsumed) {
+              return@Action
+            }
+            loadRandomInspection(10)
+          },
+          threshold = emptyListThreshold()
+        )
+      }
       log.warning("All loaded inspections are completed.")
-      return
+      return@launch
     }
 
     val chosen = loadedInspections.firstOrNull { !it.second }
     if (chosen == null) {
-      showErrorNotification("FirstOrNull returned null but none of the guard clauses caught it.")
+      runLater { showErrorNotification("FirstOrNull returned null but none of the guard clauses caught it.") }
       log.severe("FirstOrNull returned null but none of the guard clauses caught it.")
-      return
+      return@launch
     }
 
     if (chosen.second) {
-      showErrorNotification("FirstOrNull returned a completed inspection despite its predicate.")
+      runLater { showErrorNotification("FirstOrNull returned a completed inspection despite its predicate.") }
       log.severe("FirstOrNull returned a completed inspection despite its predicate.")
-      return
+      return@launch
     }
 
     val chosenIndex = loadedInspections.indexOf(chosen)
 
-    showInfoNotification("Running inspection on ${chosen.first.homeId}, which ${if (chosen.second) "IS" else "IS NOT"} complete.\nFound at index $chosenIndex.")
+    runLater { showInfoNotification("Running inspection on ${chosen.first.homeId}, which ${if (chosen.second) "IS" else "IS NOT"} complete.\nFound at index $chosenIndex.") }
 
-    val result = runInspection(chosen.first)
+    val result = runInspection(chosen.first).await()
     if (result) {
       loadedInspections.remove(chosen)
       loadedInspections.add(chosen.first to true)
     }
   }
 
-  private fun runSpecificInspection(index: Int) {
+  private suspend fun runSpecificInspection(index: Int) = this@GeneratorRunnerView.launch(coroutineContext) {
     if (runningLock.get() != null) {
-      showWarningNotification("Run is currently locked.")
-      return
+      runLater { showWarningNotification("Run is currently locked.") }
+      return@launch
     }
 
     if (index !in 0 until loadedInspections.size) {
-      showErrorNotification("Invalid index passed to runSpecificInspection: $index")
+      runLater { showErrorNotification("Invalid index passed to runSpecificInspection: $index") }
       log.severe("Invalid index passed to runSpecificInspection: $index")
-      return
+      return@launch
     }
 
     val (i, complete) = loadedInspections[index]
     if (complete) {
-      showWarningNotification("Inspection ${i.homeId} has already been completed.")
+      runLater { showWarningNotification("Inspection ${i.homeId} has already been completed.") }
       log.warning("Inspection ${i.homeId} has already been completed.")
-      return
+      return@launch
     }
 
-    val result = runInspection(i)
+    val result = runInspection(i).await()
 
     if (!result) {
-      return
+      return@launch
     }
 
     loadedInspections.remove(index, index + 1)
     loadedInspections.add(i to true)
   }
 
-  private fun runInspection(inspection: InspectionData): Boolean {
+
+  private fun runInspection(inspection: InspectionData) = this@GeneratorRunnerView.async(coroutineContext) {
     if (runningLock.get() != null) {
-      showWarningNotification("Run is currently locked.")
-      return false
+      runLater { showWarningNotification("Run is currently locked.") }
+      return@async false
     }
 
-    showInfoNotification("Starting Run on Inspection for ${inspection.homeId}")
+    runLater { showInfoNotification("Starting Run on Inspection for ${inspection.homeId}") }
     runningLock.set({})
     val result = wordReplacer.runOn(inspection)
-    showInfoNotification(result.textLog)
+    runLater { showInfoNotification(result.textLog) }
     log.warning(result.textLog)
 
-    runLater(Duration(500.0)) { runningLock.set(null) }
-    return if (result.thrown.isNotEmpty()) {
+    runLater { runningLock.set(null) }
+    return@async if (result.thrown.isNotEmpty()) {
       val messages = result.thrown.filter { it.message != null }.map { it.message }.joinToString("\n")
-      showErrorNotification("An exception was thrown by run on ${inspection.homeId}.${if (messages.isNotEmpty()) "\nMessages: $messages" else ""}")
+
       log.severe("An exception was thrown by run on ${inspection.homeId}.${if (messages.isNotEmpty()) "\nMessages: $messages" else ""}")
+      runLater {
+        showErrorNotification("An exception was thrown by run on ${inspection.homeId}.${if (messages.isNotEmpty()) "\nMessages: $messages" else ""}")
+        runningLock.set(null)
+      }
       false
     } else {
-      showInfoNotification("Run completed without exception. Consider it complete.")
       log.warning("Run completed without exception. Consider it complete.")
       log.info(result.textLog)
+      runLater {
+        showInfoNotification("Run completed without exception. Consider it complete.")
+        runningLock.set(null)
+      }
       true
     }
   }
 
-  private fun loadRandomInspection(maxAttempts: Int = 25) {
+  private fun loadRandomInspection(maxAttempts: Int = 25) = this@GeneratorRunnerView.launch(coroutineContext) {
     if (loadingLock.get() != null) {
-      showWarningNotification("Load is currently locked.")
-      return
+      runLater { showWarningNotification("Load is currently locked.") }
+      return@launch
     }
 
     loadingLock.set({})
-    showInfoNotification("Loading random inspection.")
+    runLater { showInfoNotification("Loading random inspection.") }
     val max = if (maxAttempts <= 1) 25 else maxAttempts
     var attempts = 0
     while (true) {
@@ -349,43 +374,46 @@ class GeneratorRunnerView : View("Generator") {
     loadingLock.set(null)
   }
 
-  private fun loadAllInspections() {
+  private fun loadAllInspections() = this@GeneratorRunnerView.launch(coroutineContext) {
     if (loadingLock.get() != null) {
-      showWarningNotification("Load is currently locked.")
-      return
+      runLater { showWarningNotification("Load is currently locked.") }
+      return@launch
     }
 
     loadingLock.set({})
-    showInfoNotification("Loading all unloaded inspections.")
-    val allKeys = InspectionDataService.inspections.keys
-    val keys = allKeys.subtract(loadedInspections.map { it.first.homeId })
 
-    if (keys.isNotEmpty()) {
-      keys.mapNotNull { InspectionDataService.inspections[it] }.mapTo(loadedInspections) { it to false }
+    runAsync(TaskStatus()) {
+      runLater { showInfoNotification("Loading all unloaded inspections.") }
+      val allKeys = InspectionDataService.inspections.keys
+      val keys = allKeys.subtract(loadedInspections.map { it.first.homeId })
+
+      if (keys.isNotEmpty()) {
+        keys.mapNotNull { InspectionDataService.inspections[it] }.mapTo(loadedInspections) { it to false }
+      }
+
+      runLater { loadingLock.set(null) }
     }
-
-    runLater(Duration.seconds(0.25)) { loadingLock.set(null) }
-    return
+    return@launch
     //val unloaded = InspectionDataService.inspections.values.subtract(loadedInspections.map { it.first })
     //unloaded.forEach { loadedInspections.add(it to false) }
   }
 
-  private fun runAllInspections() {
+  private suspend fun runAllInspections() = Dispatchers.JavaFx {
     if (runningLock.get() != null) {
-      showWarningNotification("Run is currently locked.")
+      runLater { showWarningNotification("Run is currently locked.") }
       log.warning("Run is currently locked.")
-      return
+      return@JavaFx
     }
     if (loadingLock.get() != null) {
-      showWarningNotification("Load is currently locked (run all needs both locks to run).")
+      runLater { showWarningNotification("Load is currently locked (run all needs both locks to run).") }
       log.warning("Load is currently locked (run all needs both locks to run).")
-      return
+      return@JavaFx
     }
 
     runningLock.set({})
     loadingLock.set({})
 
-    showInfoNotification("Running all unrun inspections...")
+    runLater { showInfoNotification("Running all unrun inspections...") }
     val startTotal = loadedInspections.size
     val (done, notDone) = loadedInspections.partition { it.second }
     val doneCount = done.size
@@ -394,26 +422,28 @@ class GeneratorRunnerView : View("Generator") {
     var failCount = 0
 
     if (notDone.isNotEmpty()) {
-      val completed = notDone.map { it.first }.map { it to runInspection(it) }
-      completeCount = completed.count { it.second }
-      failCount = completed.count { !it.second }
-      loadedInspections.clear()
-      loadedInspections.addAll(done)
-      loadedInspections.addAll(completed)
+      for (todo in notDone) {
+        if (!this.isActive) {
+
+        }
+      }
+      // completeCount = completed.count { it.second }
+      // failCount = completed.count { !it.second }
+      // loadedInspections.clear()
+      // loadedInspections.addAll(done)
+      // loadedInspections.addAll(completed)
     }
 
-    runLater(Duration.seconds(0.25)) {
+    runLater {
       runningLock.set(null)
       loadingLock.set(null)
     }
 
-    showInfoNotification("Run All Completed.\nStarting Size: $startTotal\nStarting Complete Count: $doneCount\nStarting Incomplete Size: $notDoneCount\nCompleted: $completeCount | Failed: $failCount\nEnding Size: ${loadedInspections.size}")
+    runLater { showInfoNotification("Run All Completed.\nStarting Size: $startTotal\nStarting Complete Count: $doneCount\nStarting Incomplete Size: $notDoneCount\nCompleted: $completeCount | Failed: $failCount\nEnding Size: ${loadedInspections.size}") }
 
     if (startTotal != loadedInspections.size) {
-      showErrorNotification("Error, starting size does not match ending size, something probably went wrong :(")
+      runLater { showErrorNotification("Error, starting size does not match ending size, something probably went wrong :(") }
       log.severe("Error, starting size does not match ending size, something probably went wrong :(")
     }
   }
-
-  // private fun loadSpecificInspection()
 }
