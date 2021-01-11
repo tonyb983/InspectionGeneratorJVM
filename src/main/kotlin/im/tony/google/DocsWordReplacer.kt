@@ -6,11 +6,7 @@ import com.google.api.services.docs.v1.model.Document
 import im.tony.Const
 import im.tony.data.InspectionData
 import im.tony.data.OwnerData
-import im.tony.data.services.IOwnerDataService
-import im.tony.data.services.OwnerDataService
 import im.tony.google.extensions.drive.GoogleMimeTypes
-import im.tony.google.services.DocsService
-import im.tony.google.services.DriveService
 import im.tony.google.services.GoogleDocsService
 import im.tony.google.services.GoogleDriveService
 import im.tony.google.types.DriveFile
@@ -22,32 +18,8 @@ private const val emptyString = ""
 class DocsWordReplacer(
   private val driveService: GoogleDriveService,
   private val docsService: GoogleDocsService,
-  private val ownerDataService: IOwnerDataService?
+  private val ownerList: Collection<OwnerData>
 ) {
-  private var ownerList: Collection<OwnerData>? = null
-
-  constructor(
-    driveService: GoogleDriveService,
-    docsService: GoogleDocsService,
-    ownerList: Collection<OwnerData>
-  ) : this(driveService, docsService, null) {
-    this.ownerList = ownerList
-  }
-
-  private val isServiceBased: Boolean = ownerDataService != null
-  private val isListBased: Boolean = ownerList != null
-
-  init {
-    println("Word replacer created. isServiceBased:${isServiceBased}, isListBased:${isListBased}, ownerList size: ${ownerList?.size}")
-
-    if (!isServiceBased && !isListBased) {
-      throw IllegalStateException("DocsWordReplacer should be either list or service based, neither has been set on this mapper.")
-    }
-    if (instance == null) {
-      instance = this
-    }
-  }
-
   data class Result(
     val inspection: InspectionData? = null,
     val owner: OwnerData? = null,
@@ -119,6 +91,7 @@ class DocsWordReplacer(
 
     return docsService.createBatchUpdateRequest(
       docsService.createReplaceTextRequest("%SEND_DATE%", true, Const.SendDate),
+      docsService.createReplaceTextRequest("%DUE_DATE%", true, Const.DueDate),
       docsService.createReplaceTextRequest("%TO_ADDRESS_1%", true, to1),
       docsService.createReplaceTextRequest("%TO_ADDRESS_2%", true, to2),
       docsService.createReplaceTextRequest("%HOMEOWNER_NAME%", true, ownerData.familyName),
@@ -135,13 +108,7 @@ class DocsWordReplacer(
     // Get owner from OwnerDataService
     val owner = runCatching {
       log.appendLine("Getting inspection property owner.")
-      if (isServiceBased) {
-        ownerDataService!!.owners.getValue(inspectionData.homeId)
-      } else if (isListBased) {
-        ownerList!!.first { it.homeId == inspectionData.homeId }
-      } else {
-        throw IllegalStateException("DocsWordReplacer should be either list or service based, neither has been set on this mapper.")
-      }
+      ownerList.first { it.homeId == inspectionData.homeId }
     }.getOrElse {
       log.appendLine("Error caught while getting owner.${if (it.message != null) "\nMessage: ${it.message}" else emptyString}")
       return Result(inspection = inspectionData, thrown = it, textLog = log.toString())
@@ -266,21 +233,5 @@ class DocsWordReplacer(
     // Fin
     log.appendLine("Run complete.")
     return Result(inspection = inspectionData, owner = owner, toPropDoc, resp1, true, toAltDoc, resp2, textLog = log.toString())
-  }
-
-  companion object {
-    private var instance: DocsWordReplacer? = null
-    val Global: DocsWordReplacer
-      get() {
-        if (instance == null) {
-          instance = DocsWordReplacer(DriveService, DocsService, OwnerDataService)
-
-          if (instance == null) {
-            throw WordReplacerInitException()
-          }
-        }
-
-        return instance!!
-      }
   }
 }

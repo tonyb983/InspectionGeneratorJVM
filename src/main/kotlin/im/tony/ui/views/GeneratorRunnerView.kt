@@ -25,7 +25,7 @@ class GeneratorRunnerView : View("Generator"), CoroutineScope {
   private val loadedInspections: ObservableList<Pair<InspectionData, Boolean>> = observableListOf()
   private val loadingLock: ObjectProperty<Any?> = objectProperty()
   private val runningLock: ObjectProperty<Any?> = objectProperty()
-  private val wordReplacer: DocsWordReplacer by lazy { DocsWordReplacer(DriveService, DocsService, OwnerDataService) }
+  private val wordReplacer: DocsWordReplacer by lazy { DocsWordReplacer(DriveService, DocsService, OwnerDataService.owners.values) }
 
   private var job = Job()
   override val coroutineContext: CoroutineContext

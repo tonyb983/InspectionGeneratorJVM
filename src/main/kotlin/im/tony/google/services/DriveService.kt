@@ -7,6 +7,7 @@ import im.tony.google.types.DriveFile
 import im.tony.google.types.DriveFileList
 import im.tony.google.types.DriveFileListRequest
 import tornadofx.EventBus
+import java.io.ByteArrayOutputStream
 
 // import com.google.api.services.drive.model.File as DriveFile
 
@@ -45,6 +46,8 @@ interface GoogleDriveService {
   fun createFile(name: String? = null, setCreateOptions: DriveFile.() -> Unit): DriveFile
 
   fun copyFile(originalId: String, newName: String, modification: (DriveFile.() -> Unit)? = null): DriveFile
+
+  fun downloadAsPdf(fileId: String): ByteArrayOutputStream
 }
 
 data class FileSearchParameters(
@@ -144,6 +147,9 @@ private val DriveServiceImpl =
       .copy(originalId, DriveFile().setName(newName).apply { modification?.invoke(this) })
       .execute()
       .also { eventBus.fire(DriveFileCreatedEvent(it.id, it.name, it.mimeType)) }
+
+    override fun downloadAsPdf(fileId: String) =
+      ByteArrayOutputStream().apply { service.files().export(fileId, "application/pdf").executeMediaAndDownloadTo(this) }
   }
 
 val DriveService: GoogleDriveService = DriveServiceImpl

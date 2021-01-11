@@ -26,6 +26,6 @@ object Const {
   val ApplicationScopes: ImmutableSet<String> by lazy { persistentSetOf(DriveScopes.DRIVE, DocsScopes.DOCUMENTS, SheetsScopes.SPREADSHEETS) }
   val ScenicViewShortcut = KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN)
 
-  const val SendDate: String = "12/20/2020"
-  const val DueDate: String = "01/31/2020"
+  const val SendDate: String = "01/01/2021"
+  const val DueDate: String = "February 28, 2021"
 }
